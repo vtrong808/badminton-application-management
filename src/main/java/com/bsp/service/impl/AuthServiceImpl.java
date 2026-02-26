@@ -14,43 +14,91 @@ import org.springframework.stereotype.Service;
 
 import java.util.concurrent.TimeUnit;
 
+/**
+ * Service xử lý authentication:
+ * - Login (xác thực + tạo JWT)
+ * - Logout (blacklist JWT bằng Redis)
+ */
 // Auto-generated — ready to smash bugs like smash shuttlecocks
 @Service
 @RequiredArgsConstructor
 public class AuthServiceImpl implements AuthService {
 
+    // Repository truy xuất user từ database
     private final UserRepository userRepository;
+
+    // Service tạo và xử lý JWT
     private final JwtService jwtService;
+
+    // Spring Security component để authenticate username/password
     private final AuthenticationManager authenticationManager;
+
+    // Redis dùng để lưu blacklist token khi logout
     private final StringRedisTemplate redisTemplate;
 
+    /**
+     * Xử lý login:
+     * 1. Authenticate bằng Spring Security
+     * 2. Lấy thông tin user từ DB
+     * 3. Tạo JWT token
+     * 4. Trả về AuthResponse
+     */
     @Override
     public AuthResponse login(LoginRequest request) {
-        // 1. Xác thực qua Spring Security
+
+        // ================= 1. AUTHENTICATION =================
+        // Nếu sai username/password → Spring sẽ throw exception
         authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword())
+                new UsernamePasswordAuthenticationToken(
+                        request.getUsername(),
+                        request.getPassword()
+                )
         );
 
-        // 2. Lấy user ra
+        // ================= 2. LOAD USER =================
+        // Sau khi authenticate thành công, lấy user từ database
         User user = userRepository.findByUsername(request.getUsername())
-                .orElseThrow(() -> new RuntimeException("User not found")); // Sẽ thay bằng CustomException sau
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        // TODO: Nên thay bằng CustomException (ví dụ: NotFoundException)
 
-        // 3. Tạo token
+        // ================= 3. GENERATE JWT =================
         String jwtToken = jwtService.generateToken(user);
 
+        // ================= 4. BUILD RESPONSE =================
         return AuthResponse.builder()
                 .accessToken(jwtToken)
-                .refreshToken("dummy-refresh-token-for-now") // Implement refresh logic sau
+                .refreshToken("dummy-refresh-token-for-now")
+                // TODO: Sau này implement refresh token chuẩn
                 .username(user.getUsername())
                 .role(user.getRole().name())
                 .build();
     }
 
+    /**
+     * Logout:
+     * - Đưa JWT vào Redis blacklist
+     * - Các request sau đó sẽ bị JwtFilter chặn lại nếu token nằm trong blacklist
+     */
     @Override
     public void logout(String token) {
-        // Tại sao làm vậy: Đưa token vào Redis blacklist với thời gian sống bằng thời gian hết hạn của JWT.
-        // Các request sau dùng token này sẽ bị filter chặn lại.
-        String jwt = token.substring(7); // Bỏ chữ "Bearer "
-        redisTemplate.opsForValue().set("BL:" + jwt, "logout", 1, TimeUnit.DAYS); // Hardcode 1 Day tạm thời
+
+        // Bỏ tiền tố "Bearer " trong header Authorization
+        String jwt = token.substring(7);
+
+        /*
+         * Lưu token vào Redis với key: BL:<jwt>
+         * Value không quan trọng (chỉ để đánh dấu tồn tại)
+         * TTL hiện tại đang hardcode 1 ngày (nên đồng bộ với expire time của JWT)
+         */
+        redisTemplate.opsForValue().set(
+                "BL:" + jwt,
+                "logout",
+                1,
+                TimeUnit.DAYS
+        );
+
+        // TODO:
+        // - Nên lấy expire time từ JWT rồi set TTL chính xác thay vì hardcode
+        // - Có thể optimize bằng cách chỉ lưu đến khi token hết hạn
     }
 }
