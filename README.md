@@ -136,7 +136,7 @@ Hệ thống bao gồm các bảng chính:
 
 2️⃣ Cấu hình database
 
-  Tạo database trong SQL Server:
+  Tạo database trong MySQL:
   
   CREATE DATABASE badminton_management;
   
@@ -146,11 +146,11 @@ Hệ thống bao gồm các bảng chính:
   
   Ví dụ:
   
-    spring.datasource.url=jdbc:sqlserver://localhost:1433;databaseName=badminton_management;encrypt=true;trustServerCertificate=true
+    spring.datasource.url=jdbc:mysql://localhost:3307/bsp_db?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true&characterEncoding=UTF-8
     
-    spring.datasource.username=sa
+    spring.datasource.username=bsp_user
     
-    spring.datasource.password=your_password
+    spring.datasource.password=bsp_password
     
     app.jwt.secret=BadmintonManagementSecretKey2026VeryStrongKey
     
