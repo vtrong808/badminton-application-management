@@ -1,0 +1,32 @@
+# IDE
+.idea/
+*.iml
+*.iws
+.vscode/
+
+# Maven/Spring
+target/
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+dependency-reduced-pom.xml
+buildNumber.properties
+.mvn/timing.properties
+.mvn/wrapper/maven-wrapper.jar
+
+# Logs
+logs/
+*.log
+
+# Docker/Local Storage (KHÔNG PUSH DATA LÊN GIT)
+storage/exports/
+bsp_mysql_data/
+bsp_redis_data/
+bsp_minio_data/
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.env.local

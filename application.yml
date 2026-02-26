@@ -1,0 +1,51 @@
+# Auto-generated — ready to smash bugs like smash shuttlecocks
+
+spring:
+  application:
+    name: badminton-management
+
+  # Cấu hình kết nối MySQL Docker (Port 3307 như đã thống nhất)
+  datasource:
+    url: jdbc:mysql://localhost:3307/bsp_db?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true&characterEncoding=UTF-8
+    username: bsp_user
+    password: bsp_password
+
+  # Cấu hình Hibernate / JPA
+  jpa:
+    hibernate:
+      ddl-auto: validate # Chỉ validate, việc tạo bảng để Flyway lo
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+
+  # Cấu hình Flyway Migration
+  flyway:
+    enabled: true
+    url: jdbc:mysql://localhost:3307/bsp_db?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true&characterEncoding=UTF-8
+    user: bsp_user
+    password: bsp_password
+    baseline-on-migrate: true
+
+  # Cấu hình Redis cho JWT Blacklist
+  data:
+    redis:
+      host: localhost
+      port: 6379
+
+# Cấu hình Port chạy Server
+server:
+  port: 8080
+
+# Cấu hình Custom cho Ứng dụng của chúng ta (BSP)
+app:
+  jwt:
+    # Secret key (Chuỗi HEX ngẫu nhiên, độ dài tối thiểu 256-bit cho HS256)
+    secret: 404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970
+    # Thời gian sống của Token: 86400000 ms = 1 ngày
+    expiration: 86400000
+
+  # Chuẩn bị trước cho các phase sau (Export / Upload file)
+  storage:
+    type: local # Đổi thành 's3' khi lên Production
+    local-path: storage/exports/

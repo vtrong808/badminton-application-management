@@ -1,0 +1,65 @@
+# Auto-generated — ready to smash bugs like smash shuttlecocks
+version: '3.8'
+
+services:
+  # 1. MySQL 8.x - Trái tim của hệ thống
+  # Tại sao làm vậy: Fix cứng character-set utf8mb4 để hỗ trợ lưu tiếng Việt có dấu chuẩn xác và emoji (nếu user comment).
+  mysql:
+    image: mysql:8.0
+    container_name: bsp_mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: bsp_db
+      MYSQL_USER: bsp_user
+      MYSQL_PASSWORD: bsp_password
+    ports:
+      - "3307:3306"
+    volumes:
+      - bsp_mysql_data:/var/lib/mysql
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    networks:
+      - bsp_network
+
+  # 2. Redis - Quản lý JWT Blacklist & Caching
+  # Tại sao làm vậy: Bật appendonly (AOF) để khi container restart đột ngột, token blacklist không bị bay màu, tăng tính bảo mật.
+  redis:
+    image: redis:7.2-alpine
+    container_name: bsp_redis
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - bsp_redis_data:/data
+    command: redis-server --appendonly yes
+    networks:
+      - bsp_network
+
+  # 3. MinIO - Giả lập S3 Local Storage cho việc upload/export
+  # Tại sao làm vậy: Giữ code upload file (Cloudinary/S3) nhất quán giữa môi trường Dev và Prod. Không cần sửa code khi deploy thật.
+  minio:
+    image: minio/minio:latest
+    container_name: bsp_minio
+    restart: always
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin123
+    ports:
+      - "9000:9000" # Port gọi API (Spring Boot gọi vào đây)
+      - "9001:9001" # Port giao diện Web UI Console
+    volumes:
+      - bsp_minio_data:/data
+    command: server /data --console-address ":9001"
+    networks:
+      - bsp_network
+
+# Định nghĩa Networks để các container gọi nhau qua tên service (VD: jdbc:mysql://mysql:3306/bsp_db)
+networks:
+  bsp_network:
+    driver: bridge
+
+# Định nghĩa Volumes để data không bị mất khi gõ lệnh 'docker-compose down'
+volumes:
+  bsp_mysql_data:
+  bsp_redis_data:
+  bsp_minio_data:
