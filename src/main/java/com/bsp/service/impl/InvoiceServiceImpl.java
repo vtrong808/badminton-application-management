@@ -1,10 +1,12 @@
 package com.bsp.service.impl;
 
+import com.bsp.audit.AuditAction;
 import com.bsp.entity.Invoice;
 import com.bsp.entity.InvoiceItem;
 import com.bsp.entity.Product;
 import com.bsp.entity.User;
 import com.bsp.entity.enums.InvoiceStatus;
+import com.bsp.export.PdfExportService;
 import com.bsp.repository.InvoiceRepository;
 import com.bsp.repository.ProductRepository;
 import com.bsp.repository.UserRepository;
@@ -13,6 +15,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
@@ -24,6 +27,7 @@ public class InvoiceServiceImpl {
     private final InvoiceRepository invoiceRepository;
     private final ProductRepository productRepository;
     private final UserRepository userRepository;
+    private final PdfExportService pdfExportService;
 
     /**
      * THREAD-SAFE INVOICE NUMBER GENERATION
@@ -81,12 +85,9 @@ public class InvoiceServiceImpl {
         // TODO: Lưu Audit Log (Phase 4)
     }
 
-    /**
-     * EXPORT INVOICE: Xuất PDF (Chuẩn bị cho Phase 4).
-     */
     @Transactional
+    @AuditAction(actionType = "EXPORT", objectType = "INVOICE") // <-- AOP SẼ BẮT VÀO ĐÂY
     public void exportInvoice(Long invoiceId) {
-        // PESSIMISTIC LOCK để tránh 2 người cùng bấm Export 1 lúc tạo ra 2 file rác
         Invoice invoice = invoiceRepository.findByIdWithPessimisticLock(invoiceId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy hóa đơn"));
 
@@ -94,11 +95,16 @@ public class InvoiceServiceImpl {
             throw new RuntimeException("Chỉ được Export khi hóa đơn đã FINALIZED");
         }
 
-        // Logic xuất PDF và Upload MinIO sẽ nằm ở đây (Phase 4)
-
         invoice.setStatus(InvoiceStatus.EXPORTED);
         invoice.setExportedAt(LocalDateTime.now());
-        invoice.setExportFilePath("/storage/exports/" + invoice.getInvoiceNumber() + ".pdf");
+
+        try {
+            // Sinh PDF và lấy đường dẫn lưu vào DB
+            String pdfPath = pdfExportService.generateInvoicePdf(invoice);
+            invoice.setExportFilePath(pdfPath);
+        } catch (IOException e) {
+            throw new RuntimeException("Lỗi xuất PDF: " + e.getMessage());
+        }
 
         invoiceRepository.save(invoice);
     }
