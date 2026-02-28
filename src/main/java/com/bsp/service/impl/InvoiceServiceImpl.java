@@ -19,6 +19,7 @@ import java.io.File;
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 
 // Auto-generated — ready to smash bugs like smash shuttlecocks
 @Service
@@ -122,5 +123,68 @@ public class InvoiceServiceImpl {
             throw new RuntimeException("File vật lý không tồn tại trên server");
         }
         return file;
+    }
+
+    // Trả về danh sách DTO an toàn
+    public java.util.List<com.bsp.dto.response.InvoiceResponse> getAllInvoices() {
+        return invoiceRepository.findAll().stream()
+                .map(i -> com.bsp.dto.response.InvoiceResponse.builder()
+                        .id(i.getId())
+                        .invoiceNumber(i.getInvoiceNumber())
+                        .status(i.getStatus().name())
+                        .totalAmount(i.getTotalAmount())
+                        .createdAt(i.getCreatedAt())
+                        .build())
+                .collect(java.util.stream.Collectors.toList());
+    }
+
+    // Trả về DTO sau khi tạo
+    @Transactional
+    public com.bsp.dto.response.InvoiceResponse createRetailInvoice(com.bsp.dto.request.InvoiceRequest request, String username) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy user"));
+
+        Invoice invoice = Invoice.builder()
+                .invoiceNumber(generateInvoiceNumber())
+                .type(com.bsp.entity.enums.InvoiceType.RETAIL)
+                .status(InvoiceStatus.DRAFT)
+                .issuedBy(user)
+                .paymentMethod(com.bsp.entity.enums.PaymentMethod.valueOf(request.getPaymentMethod()))
+                .discount(java.math.BigDecimal.ZERO)
+                .tax(java.math.BigDecimal.ZERO)
+                .build();
+
+        java.math.BigDecimal total = java.math.BigDecimal.ZERO;
+
+        for (var itemReq : request.getItems()) {
+            Product p = productRepository.findById(itemReq.getProductId())
+                    .orElseThrow(() -> new RuntimeException("Sản phẩm không tồn tại"));
+
+            java.math.BigDecimal itemTotal = p.getPrice().multiply(java.math.BigDecimal.valueOf(itemReq.getQty()));
+            total = total.add(itemTotal);
+
+            InvoiceItem item = InvoiceItem.builder()
+                    .invoice(invoice)
+                    .product(p)
+                    .qty(itemReq.getQty())
+                    .unitPrice(p.getPrice())
+                    .total(itemTotal)
+                    .build();
+            invoice.getItems().add(item);
+        }
+
+        invoice.setSubtotal(total);
+        invoice.setTotalAmount(total);
+
+        Invoice saved = invoiceRepository.save(invoice);
+
+        return com.bsp.dto.response.InvoiceResponse.builder()
+                .id(saved.getId())
+                .invoiceNumber(saved.getInvoiceNumber())
+                .status(saved.getStatus().name())
+                .totalAmount(saved.getTotalAmount())
+                // Fallback thời gian phòng khi Hibernate chưa nạp kịp
+                .createdAt(saved.getCreatedAt() != null ? saved.getCreatedAt() : java.time.LocalDateTime.now())
+                .build();
     }
 }

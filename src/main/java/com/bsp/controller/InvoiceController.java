@@ -56,4 +56,19 @@ public class InvoiceController {
                 .contentType(MediaType.APPLICATION_PDF)
                 .body(resource);
     }
+
+    @GetMapping
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF_SALES')")
+    @Operation(summary = "Lấy danh sách hóa đơn")
+    public ResponseEntity<ApiResponse<java.util.List<com.bsp.dto.response.InvoiceResponse>>> getAllInvoices() {
+        return ResponseEntity.ok(ApiResponse.success(invoiceService.getAllInvoices(), "Thành công"));
+    }
+
+    @PostMapping
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF_SALES')")
+    @Operation(summary = "Tạo hóa đơn bán lẻ (DRAFT)")
+    public ResponseEntity<ApiResponse<com.bsp.dto.response.InvoiceResponse>> createRetailInvoice(@RequestBody com.bsp.dto.request.InvoiceRequest request) {
+        String username = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getName();
+        return ResponseEntity.ok(ApiResponse.success(invoiceService.createRetailInvoice(request, username), "Tạo DRAFT thành công"));
+    }
 }
