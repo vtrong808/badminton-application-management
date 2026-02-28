@@ -113,4 +113,12 @@ public class ProductServiceImpl implements ProductService {
                 .imageUrl(product.getImageUrl())
                 .build();
     }
+
+    @Override
+    @Transactional
+    public void deleteProduct(Long id) {
+        Product product = productRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy sản phẩm để xóa"));
+        productRepository.delete(product);
+    }
 }

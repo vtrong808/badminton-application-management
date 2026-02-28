@@ -49,4 +49,12 @@ public class ProductController {
         List<ProductResponse> products = productService.getAllProducts();
         return ResponseEntity.ok(ApiResponse.success(products, "Lấy danh sách thành công"));
     }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF_SALES')")
+    @Operation(summary = "Xóa sản phẩm")
+    public ResponseEntity<ApiResponse<String>> deleteProduct(@PathVariable Long id) {
+        productService.deleteProduct(id);
+        return ResponseEntity.ok(ApiResponse.success(null, "Xóa sản phẩm thành công"));
+    }
 }

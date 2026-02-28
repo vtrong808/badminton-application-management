@@ -10,6 +10,12 @@ import org.springframework.security.config.annotation.web.configurers.AbstractHt
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+
+import java.util.Arrays;
+import java.util.List;
 
 @Configuration
 @EnableWebSecurity
@@ -22,16 +28,15 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                .csrf(AbstractHttpConfigurer::disable) // Tắt CSRF vì dùng JWT Stateless
+                .cors(cors -> cors.configurationSource(corsConfigurationSource())) // <-- 1. MỞ KHÓA CORS Ở ĐÂY
+                .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
-                        // Cho phép gọi API login và xem file tài liệu Swagger mà không cần token
                         .requestMatchers(
                                 "/api/v1/auth/**",
                                 "/v3/api-docs/**",
                                 "/swagger-ui/**",
                                 "/swagger-ui.html"
                         ).permitAll()
-                        // Tất cả các request khác ĐỀU PHẢI có token hợp lệ
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
@@ -39,5 +44,26 @@ public class SecurityConfig {
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
+    }
+
+    // 2. CẤU HÌNH CHI TIẾT: Chỉ cho phép Frontend (Vue) truy cập
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration configuration = new CorsConfiguration();
+        // Cấp phép cho VueJS (Port 5173)
+        configuration.setAllowedOrigins(List.of("http://localhost:5173"));
+
+        // Cho phép các method HTTP
+        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+
+        // Cho phép gửi kèm header chứa Token
+        configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type"));
+
+        // Cho phép gửi Cookie/Credentials nếu cần
+        configuration.setAllowCredentials(true);
+
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", configuration); // Áp dụng cho mọi API
+        return source;
     }
 }
