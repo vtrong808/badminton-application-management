@@ -26,7 +26,6 @@ import java.io.File;
 public class InvoiceController {
 
     private final InvoiceServiceImpl invoiceService;
-    private final InvoiceRepository invoiceRepository;
 
     @PostMapping("/{id}/finalize")
     @PreAuthorize("hasAnyRole('ADMIN', 'STAFF_SALES')")
@@ -48,17 +47,8 @@ public class InvoiceController {
     @PreAuthorize("hasAnyRole('ADMIN', 'STAFF_SALES', 'USER')")
     @Operation(summary = "Tải file PDF hóa đơn đã export")
     public ResponseEntity<Resource> downloadInvoicePdf(@PathVariable Long id) {
-        Invoice invoice = invoiceRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy hóa đơn"));
 
-        if (invoice.getExportFilePath() == null) {
-            throw new RuntimeException("Hóa đơn này chưa được export ra PDF");
-        }
-
-        File file = new File(invoice.getExportFilePath());
-        if (!file.exists()) {
-            throw new RuntimeException("File vật lý không tồn tại trên server");
-        }
+        File file = invoiceService.getExportedPdfFile(id); // Gọi qua Service
 
         Resource resource = new FileSystemResource(file);
         return ResponseEntity.ok()

@@ -15,6 +15,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.File;
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -53,6 +54,7 @@ public class InvoiceServiceImpl {
      * Cực kỳ quan trọng: @Transactional bắt buộc phải có để giữ Lock và Rollback nếu có lỗi.
      */
     @Transactional
+    @AuditAction(actionType = "FINALIZE", objectType = "INVOICE")
     public void finalizeInvoice(Long invoiceId) {
         // 1. PESSIMISTIC LOCK Hóa Đơn
         Invoice invoice = invoiceRepository.findByIdWithPessimisticLock(invoiceId)
@@ -81,8 +83,6 @@ public class InvoiceServiceImpl {
         // 3. Cập nhật trạng thái
         invoice.setStatus(InvoiceStatus.FINALIZED);
         invoiceRepository.save(invoice);
-
-        // TODO: Lưu Audit Log (Phase 4)
     }
 
     @Transactional
@@ -107,5 +107,20 @@ public class InvoiceServiceImpl {
         }
 
         invoiceRepository.save(invoice);
+    }
+
+    public File getExportedPdfFile(Long invoiceId) {
+        Invoice invoice = invoiceRepository.findById(invoiceId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy hóa đơn"));
+
+        if (invoice.getExportFilePath() == null) {
+            throw new RuntimeException("Hóa đơn này chưa được export ra PDF");
+        }
+
+        File file = new File(invoice.getExportFilePath());
+        if (!file.exists()) {
+            throw new RuntimeException("File vật lý không tồn tại trên server");
+        }
+        return file;
     }
 }
