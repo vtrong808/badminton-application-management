@@ -46,21 +46,4 @@ public class ApplicationConfig {
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
-
-    // Tự động seed data mẫu để test API
-    @Bean
-    public CommandLineRunner initData(UserRepository repo, PasswordEncoder encoder) {
-        return args -> {
-            if (repo.count() == 0) {
-                User admin = User.builder()
-                        .username("admin")
-                        .password(encoder.encode("admin123"))
-                        .role(UserRole.ROLE_ADMIN)
-                        .active(true)
-                        .build();
-                repo.save(admin);
-                System.out.println("[Dev Setup] Đã tạo tài khoản mặc định: admin / admin123");
-            }
-        };
-    }
 }

@@ -19,7 +19,7 @@ public interface InvoiceRepository extends JpaRepository<Invoice, Long> {
     Optional<Invoice> findByIdWithPessimisticLock(@Param("id") Long id);
 
     // Lấy mã hóa đơn lớn nhất trong tháng để sinh mã mới
-    @Query("SELECT MAX(i.invoiceNumber) FROM Invoice i WHERE i.invoiceNumber LIKE :prefix%")
+    @Query("SELECT MAX(i.invoiceNumber) FROM Invoice i WHERE i.invoiceNumber LIKE CONCAT(:prefix, '%')")
     String findMaxInvoiceNumberByPrefix(@Param("prefix") String prefix);
 
     // Tại sao làm vậy: Dùng Native Query để tận dụng hàm DATE() của MySQL, nhóm doanh thu theo ngày rất tốc độ.

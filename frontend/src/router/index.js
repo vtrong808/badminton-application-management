@@ -39,6 +39,11 @@ const routes = [
                 name: 'Bookings',
                 component: () => import('../views/BookingView.vue'),
             },
+            {
+                path: 'invoices',
+                name: 'Invoices',
+                component: () => import('../views/InvoiceView.vue'),
+            },
         ]
     }
 ];
