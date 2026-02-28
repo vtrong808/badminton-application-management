@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
+import AdminLayout from '../layouts/AdminLayout.vue'; // <-- Import Layout
 
 const routes = [
     {
@@ -10,9 +11,35 @@ const routes = [
     },
     {
         path: '/',
-        name: 'Dashboard',
-        component: () => import('../views/DashboardView.vue'),
-        meta: { requiresAuth: true }
+        component: AdminLayout, // <-- Layout bọc ở ngoài
+        meta: { requiresAuth: true },
+        children: [
+            {
+                path: '', // Default route khi vào '/'
+                name: 'Dashboard',
+                component: () => import('../views/DashboardView.vue'),
+            },
+            {
+                path: '',
+                name: 'Dashboard',
+                component: () => import('../views/DashboardView.vue'),
+            },
+            {
+                path: 'products', // <-- Khai báo route mới ở đây
+                name: 'Products',
+                component: () => import('../views/ProductView.vue'),
+            },
+            {
+                path: 'courts',
+                name: 'Courts',
+                component: () => import('../views/CourtView.vue'),
+            },
+            {
+                path: 'bookings',
+                name: 'Bookings',
+                component: () => import('../views/BookingView.vue'),
+            },
+        ]
     }
 ];
 
@@ -21,17 +48,14 @@ const router = createRouter({
     routes,
 });
 
-// Guard chặn URL
 router.beforeEach((to, from, next) => {
     const authStore = useAuthStore();
-    const isAuthenticated = authStore.isAuthenticated;
-
-    if (to.meta.requiresAuth && !isAuthenticated) {
-        next('/login'); // Chưa đăng nhập -> về Login
-    } else if (to.path === '/login' && isAuthenticated) {
-        next('/'); // Đã đăng nhập rồi mà cứ đòi vào trang Login -> ép về trang chủ
+    if (to.meta.requiresAuth && !authStore.isAuthenticated) {
+        next('/login');
+    } else if (to.path === '/login' && authStore.isAuthenticated) {
+        next('/');
     } else {
-        next(); // Hợp lệ, cho đi tiếp
+        next();
     }
 });
 
