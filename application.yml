@@ -49,3 +49,10 @@ app:
   storage:
     type: local # Đổi thành 's3' khi lên Production
     local-path: storage/exports/
+
+# Cấu hình MinIO Storage
+minio:
+  url: http://localhost:9000
+  access-key: minioadmin
+  secret-key: minioadmin123
+  bucket-name: bsp-bucket
