@@ -51,4 +51,13 @@ public class User implements UserDetails {
 
     @Override
     public boolean isEnabled() { return active != null && active; }
+
+    @Column(name = "base_salary")
+    private java.math.BigDecimal baseSalary;
+
+    @Column(name = "bonus_salary")
+    private java.math.BigDecimal bonusSalary;
+
+    @Column(name = "penalty_salary")
+    private java.math.BigDecimal penaltySalary;
 }

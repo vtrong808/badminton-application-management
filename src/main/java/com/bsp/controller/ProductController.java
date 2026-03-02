@@ -25,7 +25,7 @@ public class ProductController {
     private final ProductService productService;
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF_SALES')") // Phân quyền chuẩn RBAC
+    @PreAuthorize("hasAnyRole('ADMIN', 'BS')")
     @Operation(summary = "Tạo mới sản phẩm")
     public ResponseEntity<ApiResponse<ProductResponse>> createProduct(@Valid @RequestBody ProductRequest request) {
         ProductResponse response = productService.createProduct(request);
@@ -33,7 +33,7 @@ public class ProductController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF_SALES')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'BS')")
     @Operation(summary = "Cập nhật sản phẩm (Có kiểm tra Concurrency)")
     public ResponseEntity<ApiResponse<ProductResponse>> updateProduct(
             @PathVariable Long id,
@@ -43,7 +43,7 @@ public class ProductController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF_SALES', 'STAFF_BOOKING', 'USER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'BS', 'USER')")
     @Operation(summary = "Lấy danh sách sản phẩm")
     public ResponseEntity<ApiResponse<List<ProductResponse>>> getAllProducts() {
         List<ProductResponse> products = productService.getAllProducts();
@@ -51,7 +51,7 @@ public class ProductController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF_SALES')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'BS')")
     @Operation(summary = "Xóa sản phẩm")
     public ResponseEntity<ApiResponse<String>> deleteProduct(@PathVariable Long id) {
         productService.deleteProduct(id);
