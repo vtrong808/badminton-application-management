@@ -28,7 +28,7 @@ public class InvoiceController {
     private final InvoiceServiceImpl invoiceService;
 
     @PostMapping("/{id}/finalize")
-    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF_SALES')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'BS')")
     @Operation(summary = "Chốt hóa đơn (Finalize) & Trừ tồn kho an toàn")
     public ResponseEntity<ApiResponse<String>> finalizeInvoice(@PathVariable Long id) {
         invoiceService.finalizeInvoice(id);
@@ -36,7 +36,7 @@ public class InvoiceController {
     }
 
     @PostMapping("/{id}/export")
-    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF_SALES')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'BS')")
     @Operation(summary = "Đánh dấu xuất hóa đơn (Lock chống double-export)")
     public ResponseEntity<ApiResponse<String>> exportInvoice(@PathVariable Long id) {
         invoiceService.exportInvoice(id);
@@ -44,7 +44,7 @@ public class InvoiceController {
     }
 
     @GetMapping("/{id}/download")
-    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF_SALES', 'USER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'BS', 'USER')")
     @Operation(summary = "Tải file PDF hóa đơn đã export")
     public ResponseEntity<Resource> downloadInvoicePdf(@PathVariable Long id) {
 
@@ -58,14 +58,14 @@ public class InvoiceController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF_SALES')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'BS')")
     @Operation(summary = "Lấy danh sách hóa đơn")
     public ResponseEntity<ApiResponse<java.util.List<com.bsp.dto.response.InvoiceResponse>>> getAllInvoices() {
         return ResponseEntity.ok(ApiResponse.success(invoiceService.getAllInvoices(), "Thành công"));
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF_SALES')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'BS')")
     @Operation(summary = "Tạo hóa đơn bán lẻ (DRAFT)")
     public ResponseEntity<ApiResponse<com.bsp.dto.response.InvoiceResponse>> createRetailInvoice(@RequestBody com.bsp.dto.request.InvoiceRequest request) {
         String username = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getName();

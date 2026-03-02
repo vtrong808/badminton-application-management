@@ -28,4 +28,8 @@ public class Product {
     // Nếu 2 thread cùng update bản ghi có version = 1, thread thứ 2 sẽ văng ObjectOptimisticLockingFailureException.
     @Version
     private Integer version;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "category_id")
+    private ProductCategory category;
 }
