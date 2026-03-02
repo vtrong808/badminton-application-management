@@ -6,6 +6,7 @@ import com.bsp.entity.Product;
 import com.bsp.repository.ProductRepository;
 import com.bsp.service.ProductService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired; // ✅ thêm
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,7 +19,6 @@ import java.util.stream.Collectors;
  * - Cập nhật sản phẩm
  * - Lấy danh sách sản phẩm
  */
-// Auto-generated — ready to smash bugs like smash shuttlecocks
 @Service
 @RequiredArgsConstructor
 public class ProductServiceImpl implements ProductService {
@@ -26,11 +26,11 @@ public class ProductServiceImpl implements ProductService {
     // Repository thao tác database
     private final ProductRepository productRepository;
 
+    @Autowired
+    private com.bsp.repository.ProductCategoryRepository categoryRepository;
+
     /**
      * Tạo mới sản phẩm
-     * - Mapping từ ProductRequest → Entity
-     * - Lưu vào DB
-     * - Trả về ProductResponse
      */
     @Override
     @Transactional
@@ -44,6 +44,13 @@ public class ProductServiceImpl implements ProductService {
                 .imageUrl(request.getImageUrl())
                 .build();
 
+        if (request.getCategoryId() != null) {
+            com.bsp.entity.ProductCategory category =
+                    categoryRepository.findById(request.getCategoryId())
+                            .orElseThrow(() -> new RuntimeException("Danh mục không tồn tại"));
+            product.setCategory(category);
+        }
+
         // ================= 2. SAVE TO DATABASE =================
         Product savedProduct = productRepository.save(product);
 
@@ -53,9 +60,6 @@ public class ProductServiceImpl implements ProductService {
 
     /**
      * Cập nhật sản phẩm
-     * - Tìm sản phẩm theo id
-     * - Update field
-     * - Hibernate sẽ check @Version nếu có (Optimistic Lock)
      */
     @Override
     @Transactional
@@ -64,7 +68,6 @@ public class ProductServiceImpl implements ProductService {
         // ================= 1. FIND PRODUCT =================
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy sản phẩm"));
-        // TODO: Nên thay bằng CustomException (NotFoundException)
 
         // ================= 2. UPDATE FIELDS =================
         product.setName(request.getName());
@@ -72,20 +75,18 @@ public class ProductServiceImpl implements ProductService {
         product.setStock(request.getStock());
         product.setImageUrl(request.getImageUrl());
 
-        /*
-         * Không bắt buộc phải gọi save() nếu entity đang được quản lý (managed)
-         * vì Hibernate sẽ auto dirty checking khi transaction commit.
-         * Tuy nhiên gọi save() giúp code rõ ràng hơn.
-         */
+        if (request.getCategoryId() != null) {
+            com.bsp.entity.ProductCategory category =
+                    categoryRepository.findById(request.getCategoryId())
+                            .orElseThrow(() -> new RuntimeException("Danh mục không tồn tại"));
+            product.setCategory(category);
+        }
+
         Product updatedProduct = productRepository.save(product);
 
         return mapToResponse(updatedProduct);
     }
 
-    /**
-     * Lấy toàn bộ sản phẩm
-     * readOnly = true giúp tối ưu hiệu năng (Hibernate không cần dirty checking)
-     */
     @Override
     @Transactional(readOnly = true)
     public List<ProductResponse> getAllProducts() {
@@ -96,13 +97,6 @@ public class ProductServiceImpl implements ProductService {
                 .collect(Collectors.toList());
     }
 
-    /**
-     * Mapper thủ công:
-     * Trade-off:
-     *  + Dễ debug
-     *  + Không cần thêm dependency (MapStruct/ModelMapper)
-     *  - Khi project lớn sẽ bị lặp code
-     */
     private ProductResponse mapToResponse(Product product) {
 
         return ProductResponse.builder()
