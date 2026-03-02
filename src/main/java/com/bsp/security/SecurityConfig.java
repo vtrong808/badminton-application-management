@@ -53,11 +53,11 @@ public class SecurityConfig {
         // Cấp phép cho VueJS (Port 5173)
         configuration.setAllowedOrigins(List.of("http://localhost:5173"));
 
-        // Cho phép các method HTTP
+        // Cho phép các method HTTP (Đã có OPTIONS là chuẩn)
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
 
-        // Cho phép gửi kèm header chứa Token
-        configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type"));
+        // SỬA Ở ĐÂY: Mở khóa toàn bộ Headers để không bị chặn khi gửi file (multipart/form-data)
+        configuration.setAllowedHeaders(List.of("*"));
 
         // Cho phép gửi Cookie/Credentials nếu cần
         configuration.setAllowCredentials(true);
