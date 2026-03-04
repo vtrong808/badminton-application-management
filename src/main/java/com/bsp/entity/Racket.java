@@ -27,4 +27,7 @@ public class Racket {
 
     @Version
     private Integer version;
+
+    @Column(name = "rented_at")
+    private java.time.LocalDateTime rentedAt;
 }
