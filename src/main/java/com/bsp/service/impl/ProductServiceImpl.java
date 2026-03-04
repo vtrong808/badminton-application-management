@@ -29,14 +29,22 @@ public class ProductServiceImpl implements ProductService {
     @Autowired
     private com.bsp.repository.ProductCategoryRepository categoryRepository;
 
-    /**
-     * Tạo mới sản phẩm
-     */
+    // Hàm phụ trợ: Chuyển từ Entity sang Response (Mấu chốt nằm ở đây)
+    private ProductResponse mapToResponse(Product product) {
+        return ProductResponse.builder()
+                .id(product.getId())
+                .name(product.getName())
+                .price(product.getPrice())
+                .stock(product.getStock())
+                .imageUrl(product.getImageUrl())
+                // Gán categoryId để nhả về cho Vue 3
+                .categoryId(product.getCategory() != null ? product.getCategory().getId() : null)
+                .build();
+    }
+
     @Override
     @Transactional
-    public ProductResponse createProduct(ProductRequest request) {
-
-        // ================= 1. MAP REQUEST → ENTITY =================
+    public ProductResponse createProduct(com.bsp.dto.request.ProductRequest request) {
         Product product = Product.builder()
                 .name(request.getName())
                 .price(request.getPrice())
@@ -44,68 +52,46 @@ public class ProductServiceImpl implements ProductService {
                 .imageUrl(request.getImageUrl())
                 .build();
 
+        // Map Danh mục vào Product
         if (request.getCategoryId() != null) {
-            com.bsp.entity.ProductCategory category =
-                    categoryRepository.findById(request.getCategoryId())
-                            .orElseThrow(() -> new RuntimeException("Danh mục không tồn tại"));
+            com.bsp.entity.ProductCategory category = categoryRepository.findById(request.getCategoryId())
+                    .orElseThrow(() -> new RuntimeException("Danh mục không tồn tại"));
             product.setCategory(category);
         }
 
-        // ================= 2. SAVE TO DATABASE =================
         Product savedProduct = productRepository.save(product);
-
-        // ================= 3. RETURN RESPONSE =================
-        return mapToResponse(savedProduct);
+        return mapToResponse(savedProduct); // Gọi hàm map ở trên
     }
 
-    /**
-     * Cập nhật sản phẩm
-     */
     @Override
     @Transactional
-    public ProductResponse updateProduct(Long id, ProductRequest request) {
-
-        // ================= 1. FIND PRODUCT =================
+    public ProductResponse updateProduct(Long id, com.bsp.dto.request.ProductRequest request) {
         Product product = productRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy sản phẩm"));
+                .orElseThrow(() -> new RuntimeException("Sản phẩm không tồn tại"));
 
-        // ================= 2. UPDATE FIELDS =================
         product.setName(request.getName());
         product.setPrice(request.getPrice());
         product.setStock(request.getStock());
         product.setImageUrl(request.getImageUrl());
 
+        // Map cập nhật Danh mục
         if (request.getCategoryId() != null) {
-            com.bsp.entity.ProductCategory category =
-                    categoryRepository.findById(request.getCategoryId())
-                            .orElseThrow(() -> new RuntimeException("Danh mục không tồn tại"));
+            com.bsp.entity.ProductCategory category = categoryRepository.findById(request.getCategoryId())
+                    .orElseThrow(() -> new RuntimeException("Danh mục không tồn tại"));
             product.setCategory(category);
+        } else {
+            product.setCategory(null);
         }
 
         Product updatedProduct = productRepository.save(product);
-
-        return mapToResponse(updatedProduct);
+        return mapToResponse(updatedProduct); // Gọi hàm map ở trên
     }
 
     @Override
-    @Transactional(readOnly = true)
-    public List<ProductResponse> getAllProducts() {
-
-        return productRepository.findAll()
-                .stream()
-                .map(this::mapToResponse)
-                .collect(Collectors.toList());
-    }
-
-    private ProductResponse mapToResponse(Product product) {
-
-        return ProductResponse.builder()
-                .id(product.getId())
-                .name(product.getName())
-                .price(product.getPrice())
-                .stock(product.getStock())
-                .imageUrl(product.getImageUrl())
-                .build();
+    public java.util.List<ProductResponse> getAllProducts() {
+        return productRepository.findAll().stream()
+                .map(this::mapToResponse) // Sử dụng hàm map chung cho toàn bộ List
+                .collect(java.util.stream.Collectors.toList());
     }
 
     @Override
