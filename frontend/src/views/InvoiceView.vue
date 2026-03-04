@@ -30,7 +30,7 @@
                     <div class="product-card card h-100 border-0 bg-light cursor-pointer transition-all" @click="addToCart(product)">
                       <img :src="product.imageUrl || 'https://via.placeholder.com/150'" class="card-img-top p-2 rounded-4" style="object-fit: contain; height: 120px;">
                       <div class="card-body text-center p-2">
-                        <h6 class="fw-bold text-truncate mb-1" :title="product.name">{{ product.name }}</h6>
+                        <h6 class="fw-bold text-truncate mb-1">{{ product.name }}</h6>
                         <p class="text-success fw-bold mb-0">{{ formatCurrency(product.price) }}</p>
                         <small class="text-muted">Kho: {{ product.stock }}</small>
                       </div>
@@ -50,12 +50,10 @@
               <div class="card-body overflow-auto p-0">
                 <table class="table table-borderless align-middle mb-0">
                   <tbody>
-                  <tr v-if="cart.length === 0">
-                    <td class="text-center py-5 text-muted">Giỏ hàng trống</td>
-                  </tr>
+                  <tr v-if="cart.length === 0"><td class="text-center py-5 text-muted">Giỏ hàng trống</td></tr>
                   <tr v-for="(item, index) in cart" :key="item.product.id" class="border-bottom border-light">
                     <td class="ps-3 w-50">
-                      <strong class="d-block text-heading">{{ item.product.name }}</strong>
+                      <strong class="d-block text-heading text-truncate">{{ item.product.name }}</strong>
                       <span class="text-success small">{{ formatCurrency(item.product.price) }}</span>
                     </td>
                     <td class="text-center w-25">
@@ -73,19 +71,35 @@
 
               <div class="card-footer bg-light border-0 p-3 mt-auto">
                 <div class="d-flex justify-content-between mb-2">
-                  <span class="text-secondary fw-medium">Tổng tiền hàng:</span>
+                  <span class="text-secondary fw-medium">Tổng tiền:</span>
                   <strong class="fs-5 text-heading">{{ formatCurrency(cartTotal) }}</strong>
                 </div>
-                <div class="mb-3">
-                  <select class="form-select bg-white" v-model="paymentMethod">
-                    <option value="CASH">Tiền mặt (CASH)</option>
-                    <option value="TRANSFER">Chuyển khoản (TRANSFER)</option>
-                  </select>
+
+                <div class="mb-3 d-flex gap-2">
+                  <input type="radio" class="btn-check" name="payMethod" id="cash" value="CASH" v-model="paymentMethod">
+                  <label class="btn btn-outline-primary flex-fill fw-bold" for="cash"><i class="bi bi-cash-coin me-1"></i> TIỀN MẶT</label>
+
+                  <input type="radio" class="btn-check" name="payMethod" id="transfer" value="TRANSFER" v-model="paymentMethod">
+                  <label class="btn btn-outline-primary flex-fill fw-bold" for="transfer"><i class="bi bi-qr-code-scan me-1"></i> CHUYỂN KHOẢN</label>
                 </div>
+
+                <div v-if="paymentMethod === 'TRANSFER' && cartTotal > 0" class="text-center mb-3 p-3 bg-white rounded-3 border">
+                  <h6 class="fw-bold text-primary mb-2">Quét mã để thanh toán</h6>
+                  <img :src="`https://img.vietqr.io/image/970436-0123456789-compact2.png?amount=${cartTotal}&addInfo=Thanh toan BSP&accountName=BSP CENTER`" class="img-fluid rounded mb-2" style="max-height: 200px;">
+
+                  <div class="mb-2 text-start">
+                    <label class="small text-muted mb-1">Tải ảnh bill đã chuyển khoản (MinIO)</label>
+                    <div class="input-group input-group-sm">
+                      <input type="file" class="form-control" @change="uploadProof" accept="image/*" :disabled="isUploading">
+                    </div>
+                  </div>
+                  <div v-if="proofUrl" class="text-success small fw-bold"><i class="bi bi-check-circle-fill"></i> Đã tải ảnh thành công</div>
+                </div>
+
                 <button class="btn btn-success w-100 py-3 fw-bold fs-5 shadow-sm btn-checkout"
-                        :disabled="cart.length === 0 || isProcessing" @click="processCheckout">
+                        :disabled="cart.length === 0 || isProcessing || (paymentMethod === 'TRANSFER' && !proofUrl)" @click="processCheckout">
                   <span v-if="isProcessing" class="spinner-border spinner-border-sm me-2"></span>
-                  THANH TOÁN LẬP TỨC
+                  {{ paymentMethod === 'TRANSFER' ? 'XÁC NHẬN CHỜ DUYỆT' : 'THANH TOÁN LẬP TỨC' }}
                 </button>
               </div>
             </div>
@@ -100,45 +114,43 @@
               <thead class="bg-light sticky-top">
               <tr>
                 <th class="py-3 px-3">Mã Hóa Đơn</th>
-                <th class="py-3 px-3">Ngày Lập</th>
+                <th class="py-3 px-3">Phương thức</th>
                 <th class="py-3 px-3">Tổng Tiền</th>
                 <th class="py-3 px-3">Trạng Thái</th>
                 <th class="py-3 px-3 text-center">Thao Tác Nghiệp Vụ</th>
               </tr>
               </thead>
               <tbody>
-              <tr v-if="isLoadingInvoices">
-                <td colspan="5" class="text-center py-4"><div class="spinner-border text-primary"></div></td>
-              </tr>
-              <tr v-else-if="invoices.length === 0">
-                <td colspan="5" class="text-center py-4 text-muted">Chưa có hóa đơn nào</td>
-              </tr>
-              <tr v-else v-for="inv in invoices" :key="inv.id">
+              <tr v-for="inv in invoices" :key="inv.id">
                 <td class="px-3 fw-bold text-primary">{{ inv.invoiceNumber }}</td>
-                <td class="px-3 text-secondary">{{ new Date(inv.createdAt).toLocaleString('vi-VN') }}</td>
+                <td class="px-3">
+                  <span class="badge" :class="inv.paymentMethod === 'TRANSFER' ? 'bg-info text-dark' : 'bg-secondary'">{{ inv.paymentMethod }}</span>
+                </td>
                 <td class="px-3 fw-bold text-success">{{ formatCurrency(inv.totalAmount) }}</td>
                 <td class="px-3">
                     <span class="badge"
                           :class="{
-                            'bg-warning text-dark': inv.status === 'DRAFT',
+                            'bg-warning text-dark': inv.status === 'DRAFT' || inv.status === 'PENDING_CONFIRMATION',
                             'bg-success': inv.status === 'FINALIZED',
                             'bg-primary': inv.status === 'EXPORTED'
                           }">
-                      {{ inv.status }}
+                      {{ inv.status === 'PENDING_CONFIRMATION' ? 'CHỜ DUYỆT' : inv.status }}
                     </span>
                 </td>
                 <td class="px-3 text-center">
+                  <button class="btn btn-sm btn-outline-info me-2 fw-bold"
+                          v-if="inv.proofImageUrl" @click="viewProof(inv.proofImageUrl)" title="Xem Bill">
+                    <i class="bi bi-eye"></i> Bill
+                  </button>
+
                   <button class="btn btn-sm btn-outline-success me-2 fw-bold"
-                          v-if="inv.status === 'DRAFT'" @click="finalize(inv.id)" title="Chốt hóa đơn & Trừ kho">
+                          v-if="inv.status === 'DRAFT' || inv.status === 'PENDING_CONFIRMATION'" @click="finalize(inv.id)" title="Duyệt & Trừ kho">
                     <i class="bi bi-check-circle-fill"></i> Chốt Đơn
                   </button>
-                  <button class="btn btn-sm btn-outline-primary me-2 fw-bold"
-                          v-if="inv.status === 'FINALIZED'" @click="exportPdf(inv.id)" title="Tạo file PDF">
-                    <i class="bi bi-file-earmark-pdf-fill"></i> Xuất PDF
-                  </button>
-                  <button class="btn btn-sm btn-primary fw-bold shadow-sm"
-                          v-if="inv.status === 'EXPORTED'" @click="downloadPdf(inv.id)" title="Tải về máy">
-                    <i class="bi bi-download"></i> Tải File
+
+                  <button class="btn btn-sm btn-primary fw-bold"
+                          v-if="inv.status === 'EXPORTED'" @click="downloadPdf(inv.id)">
+                    <i class="bi bi-download"></i> Tải PDF
                   </button>
                 </td>
               </tr>
@@ -149,120 +161,126 @@
       </div>
 
     </div>
+
+    <div class="modal fade" id="proofModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Ảnh Minh Chứng</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body text-center">
+            <img :src="currentProofImg" class="img-fluid rounded">
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted } from 'vue';
 import api from '../api/axios';
+import { Modal } from 'bootstrap';
 
-// --- DATA POS ---
 const products = ref([]);
 const cart = ref([]);
 const paymentMethod = ref('CASH');
 const isProcessing = ref(false);
+const isUploading = ref(false);
+const proofUrl = ref('');
+const currentProofImg = ref('');
 
-// --- DATA INVOICES ---
 const invoices = ref([]);
-const isLoadingInvoices = ref(false);
 
 const formatCurrency = (val) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(val);
 
-const cartTotal = computed(() => {
-  return cart.value.reduce((sum, item) => sum + (item.product.price * item.qty), 0);
-});
+const cartTotal = computed(() => cart.value.reduce((sum, item) => sum + (item.product.price * item.qty), 0));
 
-// Lấy danh sách sản phẩm cho POS
 const fetchProducts = async () => {
-  try {
-    const res = await api.get('/products');
-    products.value = res.data.data.filter(p => p.stock > 0); // Chỉ lấy hàng còn tồn
-  } catch (error) { console.error(error); }
+  const res = await api.get('/products');
+  products.value = res.data.data.filter(p => p.stock > 0);
 };
 
-// Thêm vào giỏ
 const addToCart = (product) => {
   const existing = cart.value.find(i => i.product.id === product.id);
   if (existing) {
     if (existing.qty < product.stock) existing.qty++;
-    else alert('Không đủ tồn kho!');
   } else {
     cart.value.push({ product, qty: 1 });
   }
 };
 
-// Cập nhật số lượng
 const updateQty = (index, change) => {
   const item = cart.value[index];
   const newQty = item.qty + change;
-  if (newQty <= 0) {
-    cart.value.splice(index, 1); // Xóa khỏi giỏ
-  } else if (newQty > item.product.stock) {
-    alert('Vượt quá số lượng tồn kho!');
-  } else {
-    item.qty = newQty;
-  }
+  if (newQty <= 0) cart.value.splice(index, 1);
+  else if (newQty <= item.product.stock) item.qty = newQty;
 };
 
-// THANH TOÁN (Quy trình: Tạo DRAFT -> Tự động FINALIZED -> Tự động EXPORT)
-const processCheckout = async () => {
-  if (!confirm(`Thanh toán ${formatCurrency(cartTotal.value)} ?`)) return;
-  isProcessing.value = true;
+// Gọi MinIO upload ảnh hóa đơn
+const uploadProof = async (event) => {
+  const file = event.target.files[0];
+  if (!file) return;
+  const formData = new FormData();
+  formData.append('file', file);
+  isUploading.value = true;
+  try {
+    const res = await api.post('/files/upload', formData, { headers: { 'Content-Type': 'multipart/form-data' }});
+    proofUrl.value = res.data.data;
+  } catch (error) { alert('Lỗi tải ảnh minh chứng'); }
+  finally { isUploading.value = false; }
+};
 
+const processCheckout = async () => {
+  isProcessing.value = true;
   try {
     const payload = {
       paymentMethod: paymentMethod.value,
+      proofImageUrl: proofUrl.value,
       items: cart.value.map(i => ({ productId: i.product.id, qty: i.qty }))
     };
 
-    // 1. Tạo Hóa đơn DRAFT
+    // 1. Tạo Hóa đơn
     const res = await api.post('/invoices', payload);
     const invoiceId = res.data.data.id;
 
-    // 2. Chốt hóa đơn (Kích hoạt @Version / Pessimistic Locking & Trừ kho)
-    await api.post(`/invoices/${invoiceId}/finalize`);
+    // Nếu tiền mặt, tự động chốt đơn luôn
+    if(paymentMethod.value === 'CASH') {
+      await api.post(`/invoices/${invoiceId}/finalize`);
+      await api.post(`/invoices/${invoiceId}/export`);
+      alert('Thanh toán tiền mặt thành công!');
+    } else {
+      alert('Đã gửi yêu cầu hóa đơn chờ duyệt!');
+    }
 
-    // 3. Xuất file PDF luôn
-    await api.post(`/invoices/${invoiceId}/export`);
-
-    alert('🎉 Thanh toán thành công! Hóa đơn đã được lưu và xuất PDF.');
-
-    // Reset giỏ hàng
     cart.value = [];
-    await fetchProducts(); // Tải lại tồn kho mới
-    await fetchInvoices(); // Cập nhật lại lịch sử
-  } catch (error) {
-    alert(error.response?.data?.message || 'Lỗi thanh toán!');
-  } finally {
-    isProcessing.value = false;
-  }
+    proofUrl.value = '';
+    paymentMethod.value = 'CASH';
+    fetchProducts();
+    fetchInvoices();
+  } catch (error) { alert('Lỗi thanh toán!'); }
+  finally { isProcessing.value = false; }
 };
 
-// ================== NGHIỆP VỤ TAB HÓA ĐƠN ==================
 const fetchInvoices = async () => {
-  isLoadingInvoices.value = true;
-  try {
-    const res = await api.get('/invoices');
-    invoices.value = res.data.data.sort((a,b) => b.id - a.id); // Mới nhất lên đầu
-  } catch (error) { console.error(error); }
-  finally { isLoadingInvoices.value = false; }
+  const res = await api.get('/invoices');
+  invoices.value = res.data.data.sort((a,b) => b.id - a.id);
+};
+
+const viewProof = (url) => {
+  currentProofImg.value = url;
+  Modal.getOrCreateInstance(document.getElementById('proofModal')).show();
 };
 
 const finalize = async (id) => {
   try {
     await api.post(`/invoices/${id}/finalize`);
-    alert('Chốt đơn & Trừ kho thành công!');
+    await api.post(`/invoices/${id}/export`); // Duyệt xong xuất PDF luôn
+    alert('Đã duyệt đơn và xuất PDF!');
     fetchInvoices();
     fetchProducts();
-  } catch (error) { alert(error.response?.data?.message || 'Lỗi chốt đơn'); }
-};
-
-const exportPdf = async (id) => {
-  try {
-    await api.post(`/invoices/${id}/export`);
-    alert('Xuất PDF thành công!');
-    fetchInvoices();
-  } catch (error) { alert(error.response?.data?.message || 'Lỗi xuất PDF'); }
+  } catch (error) { alert('Lỗi chốt đơn'); }
 };
 
 const downloadPdf = async (id) => {
@@ -271,15 +289,7 @@ const downloadPdf = async (id) => {
     const url = window.URL.createObjectURL(new Blob([response.data]));
     const link = document.createElement('a');
     link.href = url;
-
-    // Đọc tên file từ header (nếu có) hoặc gán mặc định
-    let fileName = `BSP-Invoice-${id}.pdf`;
-    const disposition = response.headers['content-disposition'];
-    if (disposition && disposition.indexOf('filename=') !== -1) {
-      fileName = disposition.split('filename=')[1].replace(/"/g, '');
-    }
-
-    link.setAttribute('download', fileName);
+    link.setAttribute('download', `Invoice-${id}.pdf`);
     document.body.appendChild(link);
     link.click();
     link.remove();
@@ -296,14 +306,7 @@ onMounted(() => {
 .bg-primary-sport { background-color: #2563EB; }
 .text-primary-sport { color: #2563EB; }
 .btn-checkout { background-color: #10B981; border: none; }
-.btn-checkout:hover { background-color: #059669; }
-
-.product-card { border: 1px solid transparent; }
-.product-card:hover {
-  border-color: #2563EB;
-  box-shadow: 0 4px 12px rgba(37,99,235,0.15);
-  transform: translateY(-2px);
-}
+.product-card:hover { border-color: #2563EB; box-shadow: 0 4px 12px rgba(37,99,235,0.15); transform: translateY(-2px); }
 .nav-tabs .nav-link { border: none; padding: 12px 20px; font-size: 1.1rem; }
 .nav-tabs .nav-link.active { border-bottom: 3px solid #2563EB; background: transparent; }
 </style>

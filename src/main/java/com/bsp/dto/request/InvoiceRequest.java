@@ -5,6 +5,7 @@ import java.util.List;
 @Data
 public class InvoiceRequest {
     private String paymentMethod;
+    private String proofImageUrl;
     private List<CartItem> items;
 
     @Data

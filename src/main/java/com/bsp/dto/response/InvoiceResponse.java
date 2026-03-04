@@ -14,4 +14,6 @@ public class InvoiceResponse {
     private String status;
     private BigDecimal totalAmount;
     private LocalDateTime createdAt;
+    private String paymentMethod;
+    private String proofImageUrl;
 }

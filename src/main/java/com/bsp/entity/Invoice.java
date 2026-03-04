@@ -61,4 +61,7 @@ public class Invoice {
     @org.hibernate.annotations.CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private java.time.LocalDateTime createdAt;
+
+    @Column(name = "proof_image_url")
+    private String proofImageUrl;
 }
