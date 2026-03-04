@@ -147,9 +147,10 @@ public class InvoiceServiceImpl {
         Invoice invoice = Invoice.builder()
                 .invoiceNumber(generateInvoiceNumber())
                 .type(com.bsp.entity.enums.InvoiceType.RETAIL)
-                .status(InvoiceStatus.DRAFT)
+                .status(request.getPaymentMethod().equals("TRANSFER") ? InvoiceStatus.PENDING_CONFIRMATION : InvoiceStatus.DRAFT)
                 .issuedBy(user)
                 .paymentMethod(com.bsp.entity.enums.PaymentMethod.valueOf(request.getPaymentMethod()))
+                .proofImageUrl(request.getProofImageUrl())
                 .discount(java.math.BigDecimal.ZERO)
                 .tax(java.math.BigDecimal.ZERO)
                 .build();
@@ -182,8 +183,9 @@ public class InvoiceServiceImpl {
                 .id(saved.getId())
                 .invoiceNumber(saved.getInvoiceNumber())
                 .status(saved.getStatus().name())
+                .paymentMethod(saved.getPaymentMethod().name())
+                .proofImageUrl(saved.getProofImageUrl())
                 .totalAmount(saved.getTotalAmount())
-                // Fallback thời gian phòng khi Hibernate chưa nạp kịp
                 .createdAt(saved.getCreatedAt() != null ? saved.getCreatedAt() : java.time.LocalDateTime.now())
                 .build();
     }

@@ -1,0 +1,1 @@
+ALTER TABLE invoices ADD COLUMN proof_image_url VARCHAR(255);

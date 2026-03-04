@@ -10,6 +10,7 @@
       </button>
     </div>
 
+    <!-- KPI CARDS -->
     <div class="row g-4 mb-4">
       <div class="col-md-4">
         <div class="card border-0 shadow-sm rounded-4 h-100 bg-gradient-primary text-white">
@@ -26,6 +27,7 @@
           </div>
         </div>
       </div>
+
       <div class="col-md-4">
         <div class="card border-0 shadow-sm rounded-4 h-100">
           <div class="card-body p-4">
@@ -42,6 +44,7 @@
           </div>
         </div>
       </div>
+
       <div class="col-md-4">
         <div class="card border-0 shadow-sm rounded-4 h-100">
           <div class="card-body p-4">
@@ -60,21 +63,56 @@
       </div>
     </div>
 
-    <div class="card border-0 shadow-sm rounded-4">
-      <div class="card-header bg-white border-bottom-0 pt-4 pb-0 px-4">
-        <h5 class="fw-bold text-heading">
-          <i class="bi bi-bar-chart-fill text-primary me-2"></i>Biểu Đồ Doanh Thu Theo Ngày
-        </h5>
-      </div>
-      <div class="card-body p-4" style="height: 400px;">
-        <div v-if="isLoading" class="h-100 d-flex align-items-center justify-content-center">
-          <div class="spinner-border text-primary" role="status"></div>
+    <!-- CHARTS (2 CỘT) -->
+    <div class="row g-4">
+
+      <!-- BAR CHART -->
+      <div class="col-lg-8">
+        <div class="card border-0 shadow-sm rounded-4 h-100">
+          <div class="card-header bg-white pt-4 pb-0 px-4">
+            <h5 class="fw-bold">
+              <i class="bi bi-bar-chart-fill text-primary me-2"></i>
+              Doanh Thu Theo Ngày
+            </h5>
+          </div>
+
+          <div class="card-body p-4" style="height: 350px;">
+            <div v-if="isLoading" class="h-100 d-flex align-items-center justify-content-center">
+              <div class="spinner-border text-primary"></div>
+            </div>
+
+            <div v-else-if="!hasData" class="h-100 d-flex align-items-center justify-content-center text-muted">
+              Chưa có dữ liệu doanh thu.
+            </div>
+
+            <Bar
+                v-else
+                :data="chartData"
+                :options="chartOptions"
+            />
+          </div>
         </div>
-        <div v-else-if="!hasData" class="h-100 d-flex align-items-center justify-content-center text-muted">
-          Chưa có dữ liệu doanh thu trong 30 ngày qua. Hãy chốt đơn để xem thống kê!
-        </div>
-        <Bar v-else :data="chartData" :options="chartOptions" />
       </div>
+
+      <!-- PIE CHART -->
+      <div class="col-lg-4">
+        <div class="card border-0 shadow-sm rounded-4 h-100">
+          <div class="card-header bg-white pt-4 pb-0 px-4">
+            <h5 class="fw-bold">
+              <i class="bi bi-pie-chart-fill text-success me-2"></i>
+              Phương Thức Thanh Toán
+            </h5>
+          </div>
+
+          <div class="card-body p-4" style="height: 350px;">
+            <Pie
+                :data="pieChartData"
+                :options="pieChartOptions"
+            />
+          </div>
+        </div>
+      </div>
+
     </div>
 
   </div>
@@ -83,11 +121,11 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue';
 import api from '../api/axios';
-import { Bar } from 'vue-chartjs';
-import { Chart as ChartJS, Title, Tooltip, Legend, BarElement, CategoryScale, LinearScale } from 'chart.js';
+import { Bar, Pie } from 'vue-chartjs';
+import { Chart as ChartJS, Title, Tooltip, Legend, BarElement, CategoryScale, LinearScale, ArcElement } from 'chart.js';
 
-// Đăng ký các module của ChartJS
-ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
+// Đăng ký thêm ArcElement cho Pie chart
+ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ArcElement);
 
 const rawData = ref([]);
 const isLoading = ref(false);
@@ -170,6 +208,19 @@ const fetchRevenue = async () => {
   } finally {
     isLoading.value = false;
   }
+};
+
+const pieChartData = ref({ labels: [], datasets: [] });
+const pieChartOptions = { responsive: true, maintainAspectRatio: false };
+
+// Trong hàm fetchRevenue() hoặc fetchInvoices(), em tạo logic phân tích:
+// Giả lập data để em thấy sự khác biệt:
+pieChartData.value = {
+  labels: ['Tiền Mặt (CASH)', 'Chuyển Khoản (TRANSFER)'],
+  datasets: [{
+    backgroundColor: ['#10B981', '#2563EB'], // Xanh lá, Xanh dương
+    data: [65, 35] // % Giả lập, sau này em có thể viết API gom nhóm đếm Count nhé
+  }]
 };
 
 onMounted(() => {

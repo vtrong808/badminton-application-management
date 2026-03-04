@@ -44,6 +44,11 @@ const routes = [
                 name: 'Invoices',
                 component: () => import('../views/InvoiceView.vue'),
             },
+            {
+                path: 'shifts',
+                name: 'Shifts',
+                component: () => import('../views/ShiftView.vue')
+            },
         ]
     }
 ];
