@@ -18,15 +18,17 @@ api.interceptors.request.use(config => {
     return Promise.reject(error);
 });
 
-// Interceptor Response: Xử lý lỗi 401/403 toàn cục
 api.interceptors.response.use(response => {
     return response;
 }, error => {
     if (error.response && (error.response.status === 401 || error.response.status === 403)) {
-        // Xóa sạch token cũ và bắt đăng nhập lại
-        localStorage.removeItem('accessToken');
-        localStorage.removeItem('user');
-        window.location.href = '/login';
+        // CHỈ đá văng nếu API bị lỗi KHÔNG PHẢI là API login
+        // và người dùng KHÔNG PHẢI đang đứng ở trang login
+        if (error.config.url !== '/auth/login' && window.location.pathname !== '/login') {
+            localStorage.removeItem('accessToken');
+            localStorage.removeItem('user');
+            window.location.href = '/login';
+        }
     }
     return Promise.reject(error);
 });

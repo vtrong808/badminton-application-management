@@ -24,34 +24,28 @@ public class WalkInController {
     private final WalkInService walkInService;
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'BS')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'BS', 'CUSTOMER')") // ĐÃ THÊM CUSTOMER
     @Operation(summary = "Lấy danh sách khách vãng lai hôm nay")
     public ResponseEntity<ApiResponse<List<WalkInSession>>> getTodaySessions() {
-
         List<WalkInSession> sessions = walkInService.getTodaySessions();
-
         return ResponseEntity.ok(ApiResponse.success(sessions, "Thành công"));
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'BS')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'BS', 'CUSTOMER')") // ĐÃ THÊM CUSTOMER
     @Operation(summary = "Tạo phiên chơi cho khách vãng lai")
     public ResponseEntity<ApiResponse<WalkInSession>> createSession(
             @RequestBody WalkInRequest request) {
-
         WalkInSession session = walkInService.createSession(request);
-
         return ResponseEntity.ok(ApiResponse.success(session, "Tạo thành công"));
     }
 
     @PutMapping("/{id}/finish")
-    @PreAuthorize("hasAnyRole('ADMIN', 'BS')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'BS')") // Chỉ nhân viên mới có quyền kết thúc giờ
     @Operation(summary = "Kết thúc phiên chơi")
     public ResponseEntity<ApiResponse<WalkInSession>> finishSession(
             @PathVariable Long id) {
-
         WalkInSession session = walkInService.finishSession(id);
-
         return ResponseEntity.ok(ApiResponse.success(session, "Đã kết thúc"));
     }
 }

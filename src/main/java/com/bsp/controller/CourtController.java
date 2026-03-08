@@ -24,7 +24,7 @@ public class CourtController {
     private final CourtRepository courtRepository;
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'BS', 'USER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'BS', 'CUSTOMER')")
     public ResponseEntity<ApiResponse<List<Court>>> getAllCourts() {
         return ResponseEntity.ok(ApiResponse.success(courtRepository.findAll(), "Lấy danh sách sân thành công"));
     }

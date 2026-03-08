@@ -16,16 +16,16 @@ export const useAuthStore = defineStore('auth', {
     actions: {
         async login(username, password) {
             try {
-                // Backend trả về thẳng AuthResponse { accessToken, refreshToken, username, role }
                 const response = await api.post('/auth/login', { username, password });
 
-                this.token = response.data.accessToken;
+                const payload = response.data.data || response.data;
+
+                this.token = payload.accessToken;
                 this.user = {
-                    username: response.data.username,
-                    role: response.data.role
+                    username: payload.username,
+                    role: payload.role
                 };
 
-                // Lưu vào LocalStorage để F5 không bị mất đăng nhập
                 localStorage.setItem('accessToken', this.token);
                 localStorage.setItem('user', JSON.stringify(this.user));
 
@@ -38,12 +38,10 @@ export const useAuthStore = defineStore('auth', {
 
         async logout() {
             try {
-                // Gọi API backend để đưa token vào Redis Blacklist
                 await api.post('/auth/logout');
             } catch (error) {
                 console.error('Lỗi khi gọi API logout:', error);
             } finally {
-                // Xóa state dù backend có lỗi hay không
                 this.token = null;
                 this.user = null;
                 localStorage.removeItem('accessToken');
