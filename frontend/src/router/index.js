@@ -1,62 +1,38 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
-import AdminLayout from '../layouts/AdminLayout.vue'; // <-- Import Layout
+import AdminLayout from '../layouts/AdminLayout.vue';
+import CustomerLayout from '../layouts/CustomerLayout.vue';
 
 const routes = [
-    {
-        path: '/login',
-        name: 'Login',
-        component: () => import('../views/LoginView.vue'),
-        meta: { requiresAuth: false }
-    },
+    { path: '/login', name: 'Login', component: () => import('../views/LoginView.vue') },
+
+    // LUỒNG DÀNH CHO ADMIN / BS
     {
         path: '/',
-        component: AdminLayout, // <-- Layout bọc ở ngoài
-        meta: { requiresAuth: true },
+        component: AdminLayout,
+        meta: { requiresAuth: true, allowedRoles: ['ROLE_ADMIN', 'ROLE_BS'] },
         children: [
-            {
-                path: '', // Default route khi vào '/'
-                name: 'Dashboard',
-                component: () => import('../views/DashboardView.vue'),
-            },
-            {
-                path: '',
-                name: 'Dashboard',
-                component: () => import('../views/DashboardView.vue'),
-            },
-            {
-                path: 'products', // <-- Khai báo route mới ở đây
-                name: 'Products',
-                component: () => import('../views/ProductView.vue'),
-            },
-            {
-                path: 'courts',
-                name: 'Courts',
-                component: () => import('../views/CourtView.vue'),
-            },
-            {
-                path: 'bookings',
-                name: 'Bookings',
-                component: () => import('../views/BookingView.vue'),
-            },
-            {
-                path: 'invoices',
-                name: 'Invoices',
-                component: () => import('../views/InvoiceView.vue'),
-            },
-            {
-                path: 'shifts',
-                name: 'Shifts',
-                component: () => import('../views/ShiftView.vue')
-            },
-            {
-                path: 'accounts',
-                name: 'Accounts',
-                component: () => import('../views/AccountView.vue')
-            },
+            { path: '', name: 'Dashboard', component: () => import('../views/DashboardView.vue') },
+            { path: 'courts', name: 'Courts', component: () => import('../views/CourtView.vue') },
+            { path: 'bookings', name: 'Bookings', component: () => import('../views/BookingView.vue') },
+            { path: 'products', name: 'Products', component: () => import('../views/ProductView.vue') },
+            { path: 'invoices', name: 'Invoices', component: () => import('../views/InvoiceView.vue') },
+            { path: 'shifts', name: 'Shifts', component: () => import('../views/ShiftView.vue') },
+            { path: 'accounts', name: 'Accounts', component: () => import('../views/AccountView.vue') },
+        ]
+    },
+
+    // LUỒNG DÀNH CHO KHÁCH HÀNG (CUSTOMER)
+    {
+        path: '/customer',
+        component: CustomerLayout,
+        meta: { requiresAuth: true, allowedRoles: ['ROLE_CUSTOMER'] },
+        children: [
+            { path: 'booking', name: 'CustomerBooking', component: () => import('../components/HelloWorld.vue') },
+            { path: 'service', name: 'CustomerService', component: () => import('../components/HelloWorld.vue') }
         ]
     }
-];
+]
 
 const router = createRouter({
     history: createWebHistory(),
@@ -65,11 +41,23 @@ const router = createRouter({
 
 router.beforeEach((to, from, next) => {
     const authStore = useAuthStore();
-    if (to.meta.requiresAuth && !authStore.isAuthenticated) {
+    const isAuthenticated = authStore.isAuthenticated;
+    const userRole = authStore.user?.role;
+
+    if (to.meta.requiresAuth && !isAuthenticated) {
         next('/login');
-    } else if (to.path === '/login' && authStore.isAuthenticated) {
-        next('/');
-    } else {
+    }
+    // Chặn user vào nhầm layout (Khách hàng không được vào "/", Admin không được vào "/customer")
+    else if (to.meta.allowedRoles && !to.meta.allowedRoles.includes(userRole)) {
+        if (userRole === 'ROLE_CUSTOMER') next('/customer/booking');
+        else next('/');
+    }
+    // Nếu đã login mà cố tình vào trang login -> đẩy về trang chủ của họ
+    else if (to.path === '/login' && isAuthenticated) {
+        if (userRole === 'ROLE_CUSTOMER') next('/customer/booking');
+        else next('/');
+    }
+    else {
         next();
     }
 });
