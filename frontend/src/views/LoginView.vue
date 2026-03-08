@@ -62,12 +62,20 @@ const handleLogin = async () => {
   errorMessage.value = '';
   try {
     await authStore.login(username.value, password.value);
-    router.push('/'); // Đăng nhập xong đá về Dashboard
+
+    // ĐIỀU HƯỚNG THÔNG MINH DỰA VÀO ROLE
+    const role = authStore.user?.role;
+    if (role === 'ROLE_CUSTOMER') {
+      router.push('/customer/booking'); // Khách hàng về nhà khách
+    } else {
+      router.push('/'); // Admin/BS về Dashboard
+    }
+
   } catch (error) {
     if (error.response && error.response.status === 403) {
       errorMessage.value = 'Sai tài khoản hoặc mật khẩu!';
     } else {
-      errorMessage.value = 'Hệ thống đang bảo trì, vui lòng thử lại sau.';
+      errorMessage.value = 'Lỗi kết nối máy chủ, vui lòng thử lại sau.';
     }
   } finally {
     isLoading.value = false;
