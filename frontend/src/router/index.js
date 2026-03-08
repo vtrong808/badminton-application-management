@@ -49,6 +49,11 @@ const routes = [
                 name: 'Shifts',
                 component: () => import('../views/ShiftView.vue')
             },
+            {
+                path: 'accounts',
+                name: 'Accounts',
+                component: () => import('../views/AccountView.vue')
+            },
         ]
     }
 ];
