@@ -37,6 +37,12 @@
           </router-link>
         </li>
         <li class="nav-item mb-1">
+          <router-link to="/accounts" class="nav-link sidebar-link d-flex align-items-center" active-class="active">
+            <i class="bi bi-people fs-5"></i>
+            <span v-if="!isCollapsed" class="ms-3">Quản Lý Tài Khoản</span>
+          </router-link>
+        </li>
+        <li class="nav-item mb-1">
           <router-link to="/invoices" class="nav-link sidebar-link d-flex align-items-center" active-class="active">
             <i class="bi bi-receipt fs-5"></i>
             <span v-if="!isCollapsed" class="ms-3">Hóa Đơn / POS</span>

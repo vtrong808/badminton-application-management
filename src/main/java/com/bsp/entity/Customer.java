@@ -18,10 +18,13 @@ public class Customer {
     @Column(name = "full_name", nullable = false, length = 100)
     private String fullName;
 
-    @Column(name = "is_member")
-    private Boolean isMember;
-
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
+
+    private String password;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "customer_type", nullable = false)
+    private com.bsp.entity.enums.CustomerType customerType;
 }
