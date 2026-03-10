@@ -26,20 +26,21 @@ public class ShiftController {
     private final UserRepository userRepository;
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'BS')")
+    // Dùng hasAuthority bao phủ toàn bộ trường hợp để không bao giờ bị 403
+    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ADMIN') or hasAuthority('ROLE_BS') or hasAuthority('BS')")
     public ResponseEntity<ApiResponse<List<ShiftSchedule>>> getAllShifts() {
         return ResponseEntity.ok(ApiResponse.success(shiftRepository.findAll(), "Thành công"));
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN')")
+    // Cấp quyền Admin tuyệt đối
+    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ADMIN')")
     public ResponseEntity<ApiResponse<ShiftSchedule>> assignShift(@RequestBody ShiftRequest request) {
         User user = userRepository.findById(request.getUserId())
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy nhân viên"));
 
-        ShiftSchedule shift = shiftRepository.findAll().stream()
-                .filter(s -> s.getUser().getId().equals(user.getId()) && s.getShiftDate().equals(request.getShiftDate()))
-                .findFirst()
+        // Truy vấn an toàn
+        ShiftSchedule shift = shiftRepository.findByUserIdAndShiftDate(user.getId(), request.getShiftDate())
                 .orElse(new ShiftSchedule());
 
         shift.setUser(user);
@@ -51,14 +52,14 @@ public class ShiftController {
     }
 
     @PutMapping("/{id}/check-in")
-    @PreAuthorize("hasAnyRole('ADMIN', 'BS')")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ADMIN') or hasAuthority('ROLE_BS') or hasAuthority('BS')")
     public ResponseEntity<ApiResponse<ShiftSchedule>> checkIn(@PathVariable Long id) {
         ShiftSchedule shift = shiftRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy ca làm việc"));
 
         String currentUsername = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getName();
         boolean isAdmin = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getAuthorities().stream()
-                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN") || a.getAuthority().equals("ADMIN"));
 
         if (!isAdmin && !shift.getUser().getUsername().equals(currentUsername)) {
             throw new RuntimeException("Lỗi: Không được phép điểm danh hộ người khác!");

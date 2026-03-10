@@ -1,4 +1,5 @@
 package com.bsp.dto.request;
+
 import lombok.Data;
 import java.time.LocalDate;
 
@@ -6,5 +7,5 @@ import java.time.LocalDate;
 public class ShiftRequest {
     private Long userId;
     private LocalDate shiftDate;
-    private String shiftType; // MORNING, AFTERNOON, EVENING
+    private String shiftType;
 }

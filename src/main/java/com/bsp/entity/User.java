@@ -32,9 +32,6 @@ public class User implements UserDetails {
 
     private Boolean active;
 
-    // --- Spring Security UserDetails Methods ---
-    // Tại sao làm vậy: Implement trực tiếp UserDetails để Spring Security dùng luôn thực thể này cho Authentication context.
-
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return List.of(new SimpleGrantedAuthority(role.name()));
