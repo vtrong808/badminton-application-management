@@ -1,10 +1,10 @@
 package com.bsp.config;
 
+import com.bsp.entity.Customer;
 import com.bsp.entity.User;
-import com.bsp.entity.enums.UserRole;
+import com.bsp.repository.CustomerRepository;
 import com.bsp.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -16,24 +16,45 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
-// Auto-generated — ready to smash bugs like smash shuttlecocks
+import java.util.Optional;
+
 @Configuration
 @RequiredArgsConstructor
 public class ApplicationConfig {
 
     private final UserRepository userRepository;
+    private final CustomerRepository customerRepository; // Bổ sung Repo Khách hàng
 
     @Bean
     public UserDetailsService userDetailsService() {
-        return username -> userRepository.findByUsername(username)
-                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+        return username -> {
+            // 1. Quét trong bảng Users (Dành cho Admin, BS)
+            Optional<User> userOpt = userRepository.findByUsername(username);
+            if (userOpt.isPresent()) {
+                return userOpt.get();
+            }
+
+            // 2. Quét trong bảng Customers (Dành cho Khách hàng đăng nhập bằng SĐT)
+            Optional<Customer> customerOpt = customerRepository.findByPhoneNumber(username);
+            if (customerOpt.isPresent()) {
+                Customer customer = customerOpt.get();
+                // Vì Customer không implement UserDetails, ta phải bọc nó vào class User của Spring
+                return org.springframework.security.core.userdetails.User.builder()
+                        .username(customer.getPhoneNumber())
+                        .password(customer.getPassword() != null ? customer.getPassword() : "")
+                        .roles("CUSTOMER") // Đóng dấu quyền ROLE_CUSTOMER
+                        .build();
+            }
+
+            throw new UsernameNotFoundException("Không tìm thấy tài khoản với Username/SĐT: " + username);
+        };
     }
 
     @Bean
     public AuthenticationProvider authenticationProvider() {
         DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();
         authProvider.setUserDetailsService(userDetailsService());
-        authProvider.setPasswordEncoder(passwordEncoder()); // Dùng BCrypt
+        authProvider.setPasswordEncoder(passwordEncoder());
         return authProvider;
     }
 
