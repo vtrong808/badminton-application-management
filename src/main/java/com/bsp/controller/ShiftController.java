@@ -32,12 +32,11 @@ public class ShiftController {
     }
 
     @PostMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN')")
     public ResponseEntity<ApiResponse<ShiftSchedule>> assignShift(@RequestBody ShiftRequest request) {
         User user = userRepository.findById(request.getUserId())
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy nhân viên"));
 
-        // Nếu đã có ca ngày hôm đó thì cập nhật, chưa có thì tạo mới
         ShiftSchedule shift = shiftRepository.findAll().stream()
                 .filter(s -> s.getUser().getId().equals(user.getId()) && s.getShiftDate().equals(request.getShiftDate()))
                 .findFirst()
@@ -46,7 +45,7 @@ public class ShiftController {
         shift.setUser(user);
         shift.setShiftDate(request.getShiftDate());
         shift.setShiftType(ShiftType.valueOf(request.getShiftType()));
-        shift.setIsAttended(false); // Mặc định chưa điểm danh
+        shift.setIsAttended(false);
 
         return ResponseEntity.ok(ApiResponse.success(shiftRepository.save(shift), "Phân ca thành công"));
     }
@@ -54,7 +53,17 @@ public class ShiftController {
     @PutMapping("/{id}/check-in")
     @PreAuthorize("hasAnyRole('ADMIN', 'BS')")
     public ResponseEntity<ApiResponse<ShiftSchedule>> checkIn(@PathVariable Long id) {
-        ShiftSchedule shift = shiftRepository.findById(id).orElseThrow();
+        ShiftSchedule shift = shiftRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy ca làm việc"));
+
+        String currentUsername = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getName();
+        boolean isAdmin = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+
+        if (!isAdmin && !shift.getUser().getUsername().equals(currentUsername)) {
+            throw new RuntimeException("Lỗi: Không được phép điểm danh hộ người khác!");
+        }
+
         shift.setIsAttended(true);
         shift.setCheckInTime(LocalDateTime.now());
         return ResponseEntity.ok(ApiResponse.success(shiftRepository.save(shift), "Điểm danh thành công"));

@@ -26,7 +26,7 @@ public class UserController {
     private final PasswordEncoder passwordEncoder;
 
     @GetMapping("/staff")
-    @PreAuthorize("hasAnyRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'BS')")
     public ResponseEntity<ApiResponse<List<User>>> getStaff() {
         List<User> staff = userRepository.findAll().stream()
                 .filter(u -> u.getRole() == UserRole.ROLE_BS)

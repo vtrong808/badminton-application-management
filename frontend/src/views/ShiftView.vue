@@ -63,16 +63,29 @@
           <div class="modal-body">
             <p class="text-muted mb-3">Ngày: <strong>{{ currentForm.dateStr }}</strong></p>
 
-            <div class="d-grid gap-2 mb-3">
+            <div v-if="isAdmin" class="d-grid gap-2 mb-3">
               <button class="btn btn-outline-warning fw-bold text-dark" @click="assignShift('MORNING')">Ca Sáng (MORNING)</button>
               <button class="btn btn-outline-primary fw-bold" @click="assignShift('AFTERNOON')">Ca Chiều (AFTERNOON)</button>
               <button class="btn btn-outline-dark fw-bold" @click="assignShift('EVENING')">Ca Tối (EVENING)</button>
             </div>
 
+            <div v-else-if="!currentForm.existingShiftId" class="alert alert-warning text-center small mb-0">
+              <i class="bi bi-info-circle me-1"></i> Chưa có ca làm việc nào được phân công.
+            </div>
+
             <div v-if="currentForm.existingShiftId && !currentForm.isAttended" class="border-top pt-3 mt-3">
-              <button class="btn btn-success w-100 fw-bold" @click="checkIn(currentForm.existingShiftId)">
+              <button v-if="isAdmin || currentForm.staffName === authStore.user?.username"
+                      class="btn btn-success w-100 fw-bold" @click="checkIn(currentForm.existingShiftId)">
                 <i class="bi bi-fingerprint me-1"></i> XÁC NHẬN ĐIỂM DANH
               </button>
+
+              <div v-else class="alert alert-danger text-center small mb-0">
+                <i class="bi bi-x-circle-fill me-1"></i> Bạn không thể điểm danh hộ đồng nghiệp!
+              </div>
+            </div>
+
+            <div v-if="currentForm.isAttended" class="alert alert-success text-center small mb-0 mt-3 fw-bold">
+              <i class="bi bi-check-circle-fill me-1"></i> Đã hoàn thành điểm danh
             </div>
           </div>
         </div>
@@ -82,9 +95,13 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import api from '../api/axios';
 import { Modal } from 'bootstrap';
+import { useAuthStore } from '../stores/auth';
+
+const authStore = useAuthStore();
+const isAdmin = computed(() => authStore.user?.role === 'ROLE_ADMIN');
 
 const staffs = ref([]);
 const shifts = ref([]);

@@ -7,19 +7,19 @@
       </div>
 
       <ul class="nav nav-pills flex-column mb-auto px-2">
-        <li class="nav-item mb-1">
+        <li class="nav-item mb-1" v-if="isAdmin">
           <router-link to="/" class="nav-link sidebar-link d-flex align-items-center" active-class="active">
             <i class="bi bi-speedometer2 fs-5"></i>
             <span v-if="!isCollapsed" class="ms-3">Dashboard</span>
           </router-link>
         </li>
-        <li class="nav-item mb-1">
+        <li class="nav-item mb-1" v-if="isAdmin">
           <router-link to="/courts" class="nav-link sidebar-link d-flex align-items-center" active-class="active">
             <i class="bi bi-grid-1x2 fs-5"></i>
             <span v-if="!isCollapsed" class="ms-3">Quản Lý Sân</span>
           </router-link>
         </li>
-        <li class="nav-item mb-1">
+        <li class="nav-item mb-1" v-if="isAdmin">
           <router-link to="/products" class="nav-link sidebar-link d-flex align-items-center" active-class="active">
             <i class="bi bi-box-seam fs-5"></i> <span v-if="!isCollapsed" class="ms-3">Quản Lý Sản Phẩm</span>
           </router-link>
@@ -30,13 +30,13 @@
             <span v-if="!isCollapsed" class="ms-3">Lịch Đặt Sân</span>
           </router-link>
         </li>
-        <li class="nav-item mb-1">
+        <li class="nav-item mb-1" >
           <router-link to="/shifts" class="nav-link sidebar-link d-flex align-items-center" active-class="active">
             <i class="bi-calendar-range fs-5"></i>
             <span v-if="!isCollapsed" class="ms-3">Ca làm việc</span>
           </router-link>
         </li>
-        <li class="nav-item mb-1">
+        <li class="nav-item mb-1" v-if="isAdmin">
           <router-link to="/accounts" class="nav-link sidebar-link d-flex align-items-center" active-class="active">
             <i class="bi bi-people fs-5"></i>
             <span v-if="!isCollapsed" class="ms-3">Quản Lý Tài Khoản</span>
@@ -119,7 +119,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, onMounted, onUnmounted, computed } from 'vue';
 import { useAuthStore } from '../stores/auth';
 import { useRouter } from 'vue-router';
 import SockJS from 'sockjs-client/dist/sockjs';
@@ -128,6 +128,8 @@ import Stomp from 'stompjs';
 const isCollapsed = ref(false);
 const authStore = useAuthStore();
 const router = useRouter();
+
+const isAdmin = computed(() => authStore.user?.role === 'ROLE_ADMIN');
 
 const notifications = ref([]);
 const unreadCount = ref(0);
