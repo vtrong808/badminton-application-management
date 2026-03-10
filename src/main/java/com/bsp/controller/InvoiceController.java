@@ -58,14 +58,14 @@ public class InvoiceController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'BS')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'BS', 'CUSTOMER')")
     @Operation(summary = "Lấy danh sách hóa đơn")
     public ResponseEntity<ApiResponse<java.util.List<com.bsp.dto.response.InvoiceResponse>>> getAllInvoices() {
         return ResponseEntity.ok(ApiResponse.success(invoiceService.getAllInvoices(), "Thành công"));
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'BS')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'BS', 'CUSTOMER')")
     @Operation(summary = "Tạo hóa đơn bán lẻ (DRAFT)")
     public ResponseEntity<ApiResponse<com.bsp.dto.response.InvoiceResponse>> createRetailInvoice(@RequestBody com.bsp.dto.request.InvoiceRequest request) {
         String username = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getName();

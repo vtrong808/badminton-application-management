@@ -29,7 +29,7 @@ const routes = [
         meta: { requiresAuth: true, allowedRoles: ['ROLE_CUSTOMER'] },
         children: [
             { path: 'booking', name: 'CustomerBooking', component: () => import('../views/CustomerBookingView.vue') },
-            { path: 'service', name: 'CustomerService', component: () => import('../components/HelloWorld.vue') }
+            { path: 'service', name: 'CustomerService', component: () => import('../views/CustomerServiceView.vue') }
         ]
     }
 ]

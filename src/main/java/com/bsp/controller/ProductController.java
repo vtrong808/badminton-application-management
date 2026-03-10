@@ -43,7 +43,7 @@ public class ProductController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'BS', 'USER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'BS', 'CUSTOMER')")
     @Operation(summary = "Lấy danh sách sản phẩm")
     public ResponseEntity<ApiResponse<List<ProductResponse>>> getAllProducts() {
         List<ProductResponse> products = productService.getAllProducts();
