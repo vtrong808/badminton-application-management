@@ -13,6 +13,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -26,25 +27,41 @@ public class ShiftController {
     private final UserRepository userRepository;
 
     @GetMapping
-    // Dùng hasAuthority bao phủ toàn bộ trường hợp để không bao giờ bị 403
     @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ADMIN') or hasAuthority('ROLE_BS') or hasAuthority('BS')")
     public ResponseEntity<ApiResponse<List<ShiftSchedule>>> getAllShifts() {
         return ResponseEntity.ok(ApiResponse.success(shiftRepository.findAll(), "Thành công"));
     }
 
     @PostMapping
-    // Cấp quyền Admin tuyệt đối
     @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ADMIN')")
     public ResponseEntity<ApiResponse<ShiftSchedule>> assignShift(@RequestBody ShiftRequest request) {
+
+        if (request.getUserId() == null) {
+            throw new RuntimeException("Thiếu thông tin ID nhân viên!");
+        }
+
         User user = userRepository.findById(request.getUserId())
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy nhân viên"));
 
-        // Truy vấn an toàn
-        ShiftSchedule shift = shiftRepository.findByUserIdAndShiftDate(user.getId(), request.getShiftDate())
+        // KỸ THUẬT PARSE NGÀY THÁNG LINH HOẠT
+        LocalDate parsedDate;
+        try {
+            // Mặc định dịch theo chuẩn YYYY-MM-DD của thẻ input type="date"
+            parsedDate = LocalDate.parse(request.getShiftDate());
+        } catch (Exception e) {
+            try {
+                // Đề phòng Frontend gửi dạng DD/MM/YYYY
+                parsedDate = LocalDate.parse(request.getShiftDate(), java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy"));
+            } catch (Exception ex) {
+                throw new RuntimeException("Sai định dạng ngày: " + request.getShiftDate());
+            }
+        }
+
+        ShiftSchedule shift = shiftRepository.findByUserIdAndShiftDate(user.getId(), parsedDate)
                 .orElse(new ShiftSchedule());
 
         shift.setUser(user);
-        shift.setShiftDate(request.getShiftDate());
+        shift.setShiftDate(parsedDate);
         shift.setShiftType(ShiftType.valueOf(request.getShiftType()));
         shift.setIsAttended(false);
 
