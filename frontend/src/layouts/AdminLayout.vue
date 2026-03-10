@@ -141,11 +141,6 @@ const toggleSidebar = () => {
   isCollapsed.value = !isCollapsed.value;
 };
 
-const logout = () => {
-  authStore.logout();
-  router.push('/login');
-};
-
 const clearUnread = () => {
   unreadCount.value = 0;
 };
