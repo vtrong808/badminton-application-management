@@ -13,6 +13,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.messaging.simp.SimpMessagingTemplate; // Thêm thư viện WebSocket
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -32,26 +33,19 @@ import java.time.LocalTime;
  * - Lấy user hiện tại từ SecurityContext
  * - Lưu booking vào database
  */
-// Auto-generated — ready to smash bugs like smash shuttlecocks
 @Service
 @RequiredArgsConstructor
-public class BookingServiceImpl {
+public class BookingServiceImpl { // KHÔNG CẦN IMPLEMENTS
 
     private final BookingRepository bookingRepository;
     private final CourtRepository courtRepository;
     private final UserRepository userRepository;
 
+    // THÊM CÔNG CỤ PHÁT SÓNG THÔNG BÁO WEBSOCKET
+    private final SimpMessagingTemplate messagingTemplate;
+
     /**
      * Tạo mới một booking.
-     *
-     * Flow xử lý:
-     * 1. Validate thời gian
-     * 2. Kiểm tra sân tồn tại
-     * 3. Kiểm tra trạng thái sân
-     * 4. Kiểm tra trùng lịch
-     * 5. Tính tổng tiền
-     * 6. Lấy user hiện tại
-     * 7. Lưu database
      */
     @Transactional
     public Booking createBooking(BookingRequest request) {
@@ -81,44 +75,37 @@ public class BookingServiceImpl {
                 .status(BookingStatus.CONFIRMED)
                 .build();
 
-        return bookingRepository.save(booking);
+        // Lưu dữ liệu vào DB
+        Booking savedBooking = bookingRepository.save(booking);
+
+        try {
+            String username = currentUser != null ? currentUser.getUsername() : "Khách hàng";
+            messagingTemplate.convertAndSend("/topic/notifications",
+                    "🔔 CÓ LỊCH ĐẶT SÂN MỚI: Khách hàng " + username + " vừa đặt " + court.getName());
+        } catch (Exception e) {
+            System.err.println("Lỗi khi bắn thông báo WebSocket: " + e.getMessage());
+        }
+
+        return savedBooking;
     }
 
-    // ================= VALIDATION =================
-
-    /**
-     * Kiểm tra thời gian hợp lệ.
-     * startTime phải nhỏ hơn endTime.
-     */
     private void validateBookingTime(BookingRequest request) {
         if (!request.getStartTime().isBefore(request.getEndTime())) {
             throw new IllegalArgumentException("Thời gian bắt đầu phải trước thời gian kết thúc");
         }
     }
 
-    /**
-     * Lấy sân theo ID.
-     * Nếu không tồn tại -> throw exception.
-     */
     private Court getCourtOrThrow(Long courtId) {
         return courtRepository.findById(courtId)
                 .orElseThrow(() -> new IllegalArgumentException("Sân không tồn tại"));
     }
 
-    /**
-     * Kiểm tra trạng thái sân.
-     * Nếu đang bảo trì -> không cho đặt.
-     */
     private void checkCourtAvailability(Court court) {
         if (court.getStatus() == CourtStatus.MAINTENANCE) {
             throw new IllegalStateException("Sân đang bảo trì");
         }
     }
 
-    /**
-     * Kiểm tra trùng lịch đặt sân.
-     * Nếu có booking chồng lấn thời gian -> throw exception.
-     */
     private void checkBookingConflict(Court court, BookingRequest request) {
         boolean isConflict = bookingRepository.existsOverlappingBooking(
                 court.getId(),
@@ -131,10 +118,6 @@ public class BookingServiceImpl {
         }
     }
 
-    /**
-     * Lấy thông tin user đang đăng nhập từ SecurityContext.
-     * Dùng username để truy vấn DB.
-     */
     private User getCurrentUser() {
         String username = SecurityContextHolder
                 .getContext()
@@ -145,26 +128,11 @@ public class BookingServiceImpl {
                 .orElseThrow(() -> new IllegalStateException("User không hợp lệ"));
     }
 
-    // ================= PRICING LOGIC =================
-
-    /**
-     * Thuật toán tính tổng tiền.
-     *
-     * Logic:
-     * - Chia booking thành từng block 30 phút
-     * - Nếu thời điểm < 17:00 -> giá ngày
-     * - Nếu >= 17:00 -> giá đêm
-     * - Cộng dồn theo từng block
-     *
-     * Ưu điểm:
-     * - Dễ unit test
-     * - Linh hoạt thay đổi business rule
-     */
     public BigDecimal calculateTotalPrice(LocalDateTime start,
                                           LocalDateTime end,
                                           Court court) {
 
-        LocalTime dayShiftEnd = LocalTime.of(17, 0); // Mốc chuyển ca
+        LocalTime dayShiftEnd = LocalTime.of(17, 0);
         BigDecimal total = BigDecimal.ZERO;
         LocalDateTime current = start;
 

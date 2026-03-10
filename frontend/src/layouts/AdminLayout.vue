@@ -67,14 +67,49 @@
     </aside>
 
     <main class="main-content flex-grow-1 bg-dashboard d-flex flex-column">
-      <header class="topbar d-flex align-items-center justify-content-between px-4 shadow-sm bg-white">
-        <button class="btn btn-light border-0" @click="isCollapsed = !isCollapsed">
-          <i class="bi bi-list fs-4"></i>
-        </button>
-        <div class="text-end">
-          <span class="badge bg-success-bsp px-3 py-2 rounded-pill"><i class="bi bi-circle-fill small me-1"></i> Hệ thống ổn định</span>
+      <header class="top-header bg-white shadow-sm px-4 d-flex align-items-center justify-content-between">
+        <button class="btn btn-light" @click="toggleSidebar"><i class="bi bi-list fs-5"></i></button>
+
+        <div class="d-flex align-items-center">
+          <div class="nav-item dropdown me-3">
+            <a class="nav-link position-relative cursor-pointer" href="#" data-bs-toggle="dropdown" @click="clearUnread">
+              <i class="bi bi-bell-fill fs-5 text-secondary"></i>
+              <span v-if="unreadCount > 0" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size: 0.6rem;">
+                  {{ unreadCount }}
+                </span>
+            </a>
+            <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0" style="width: 300px; max-height: 400px; overflow-y: auto;">
+              <li class="dropdown-header fw-bold text-primary">Thông báo hệ thống</li>
+              <li v-if="notifications.length === 0" class="dropdown-item text-muted small py-3 text-center">Chưa có thông báo nào</li>
+              <li v-for="(notif, idx) in notifications" :key="idx" class="dropdown-item text-wrap border-bottom small py-2">
+                {{ notif }}
+              </li>
+            </ul>
+          </div>
+
+          <div class="dropdown">
+            <button class="btn btn-light border-0 dropdown-toggle fw-medium" type="button" data-bs-toggle="dropdown">
+              <i class="bi bi-person-circle text-primary me-1"></i> {{ authStore.user?.username || 'Admin' }}
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0">
+              <li><a class="dropdown-item text-danger fw-bold" href="#" @click.prevent="logout"><i class="bi bi-box-arrow-right me-2"></i>Đăng xuất</a></li>
+            </ul>
+          </div>
         </div>
       </header>
+
+      <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 1080;">
+        <div class="toast show border-0 shadow-lg" role="alert" v-if="showToast">
+          <div class="toast-header bg-primary text-white border-0">
+            <i class="bi bi-bell-fill me-2"></i>
+            <strong class="me-auto">BSP System (Mới)</strong>
+            <button type="button" class="btn-close btn-close-white" @click="showToast = false"></button>
+          </div>
+          <div class="toast-body bg-white text-dark fw-medium p-3">
+            {{ latestMessage }}
+          </div>
+        </div>
+      </div>
 
       <div class="p-4 flex-grow-1 overflow-auto">
         <router-view></router-view>
@@ -84,13 +119,62 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, onMounted, onUnmounted } from 'vue';
 import { useAuthStore } from '../stores/auth';
 import { useRouter } from 'vue-router';
+import SockJS from 'sockjs-client/dist/sockjs';
+import Stomp from 'stompjs';
 
 const isCollapsed = ref(false);
 const authStore = useAuthStore();
 const router = useRouter();
+
+const notifications = ref([]);
+const unreadCount = ref(0);
+const showToast = ref(false);
+const latestMessage = ref('');
+let stompClient = null;
+
+const toggleSidebar = () => {
+  isCollapsed.value = !isCollapsed.value;
+};
+
+const logout = () => {
+  authStore.logout();
+  router.push('/login');
+};
+
+const clearUnread = () => {
+  unreadCount.value = 0;
+};
+
+onMounted(() => {
+  // KẾT NỐI WEBSOCKET KHI VÀO GIAO DIỆN ADMIN
+  const socket = new SockJS('http://localhost:8080/ws-notifications');
+  stompClient = Stomp.over(socket);
+  stompClient.debug = null; // Tắt log nhảm trên console
+
+  stompClient.connect({}, () => {
+    console.log("🟢 WebSocket Connected!");
+    // Lắng nghe kênh thông báo
+    stompClient.subscribe('/topic/notifications', (message) => {
+      // Khi có thông báo mới bắn tới
+      latestMessage.value = message.body;
+      notifications.value.unshift(message.body); // Thêm lên đầu mảng
+      unreadCount.value++;
+
+      // Hiện Popup (Toast) 3 giây rồi tắt
+      showToast.value = true;
+      setTimeout(() => { showToast.value = false; }, 4000);
+    });
+  }, (error) => {
+    console.error("🔴 WebSocket Error: ", error);
+  });
+});
+
+onUnmounted(() => {
+  if (stompClient) stompClient.disconnect();
+});
 
 const handleLogout = async () => {
   await authStore.logout();

@@ -6,12 +6,12 @@ import com.bsp.entity.InvoiceItem;
 import com.bsp.entity.Product;
 import com.bsp.entity.User;
 import com.bsp.entity.enums.InvoiceStatus;
-import com.bsp.entity.enums.InvoiceType;
 import com.bsp.export.PdfExportService;
 import com.bsp.repository.InvoiceRepository;
 import com.bsp.repository.ProductRepository;
 import com.bsp.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,6 +19,7 @@ import java.io.File;
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -28,6 +29,7 @@ public class InvoiceServiceImpl {
     private final ProductRepository productRepository;
     private final UserRepository userRepository;
     private final PdfExportService pdfExportService;
+    private final SimpMessagingTemplate messagingTemplate;
 
     public synchronized String generateInvoiceNumber() {
         String yearMonth = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMM"));
@@ -49,12 +51,10 @@ public class InvoiceServiceImpl {
         Invoice invoice = invoiceRepository.findByIdWithPessimisticLock(invoiceId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy hóa đơn"));
 
-        // FIX 1: Cho phép duyệt cả đơn DRAFT (Tiền mặt) và PENDING_CONFIRMATION (Chuyển khoản)
         if (invoice.getStatus() != InvoiceStatus.DRAFT && invoice.getStatus() != InvoiceStatus.PENDING_CONFIRMATION) {
             throw new RuntimeException("Chỉ có thể Finalize hóa đơn ở trạng thái DRAFT hoặc PENDING_CONFIRMATION");
         }
 
-        // Trừ tồn kho an toàn
         for (InvoiceItem item : invoice.getItems()) {
             if (item.getProduct() != null) {
                 Product product = productRepository.findByIdWithPessimisticLock(item.getProduct().getId())
@@ -111,8 +111,7 @@ public class InvoiceServiceImpl {
         return file;
     }
 
-    // FIX 2: Bổ sung paymentMethod và proofImageUrl khi trả về danh sách
-    public java.util.List<com.bsp.dto.response.InvoiceResponse> getAllInvoices() {
+    public List<com.bsp.dto.response.InvoiceResponse> getAllInvoices() {
         return invoiceRepository.findAll().stream()
                 .map(i -> com.bsp.dto.response.InvoiceResponse.builder()
                         .id(i.getId())
@@ -132,7 +131,7 @@ public class InvoiceServiceImpl {
 
         Invoice invoice = Invoice.builder()
                 .invoiceNumber(generateInvoiceNumber())
-                .type(InvoiceType.RETAIL)
+                .type(com.bsp.entity.enums.InvoiceType.RETAIL)
                 .status(request.getPaymentMethod().equals("TRANSFER") ? InvoiceStatus.PENDING_CONFIRMATION : InvoiceStatus.DRAFT)
                 .issuedBy(user)
                 .paymentMethod(com.bsp.entity.enums.PaymentMethod.valueOf(request.getPaymentMethod()))
@@ -164,6 +163,11 @@ public class InvoiceServiceImpl {
         invoice.setTotalAmount(total);
 
         Invoice saved = invoiceRepository.save(invoice);
+
+        if (request.getPaymentMethod().equals("TRANSFER")) {
+            messagingTemplate.convertAndSend("/topic/notifications",
+                    "CÓ ĐƠN CHỜ DUYỆT: Hóa đơn " + saved.getInvoiceNumber() + " vừa gửi biên lai chuyển khoản!");
+        }
 
         return com.bsp.dto.response.InvoiceResponse.builder()
                 .id(saved.getId())
